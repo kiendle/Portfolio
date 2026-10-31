@@ -157,6 +157,8 @@ Raw CLI reports stay in process memory and are not written or uploaded by the co
 
 Vercel hosts the site as `kiens-projects-656209eb/kien-portfolio`, connected to the private GitHub repository `kiendle/Portfolio`. Pushes to `main` create production deployments; pushes to other branches and pull requests create preview deployments. Vercel uses Node.js 24, `npm ci`, `npm run build`, and the static `dist/` output. No server adapter or separate GitHub Actions deployment workflow is required.
 
+Vercel's default deployment protection stays enabled for `.vercel.app` URLs; the custom production domains are public.
+
 The production domain is `https://www.kienle.work`; `https://kienle.work` redirects to it with HTTP 307, preserving the previous site's routing. Astro's `site` setting supplies the canonical URL. Vercel project metadata and local environment files are ignored and must not be committed.
 
 **A local daily build is not a hosted-site deployment.** The existing daily refresh still only collects sanitized usage aggregates and rebuilds local `dist/`; it does not commit or push. To publish refreshed token counts, explicitly commit `src/data/usage.json` and push the change to `main`. Vercel then rebuilds and publishes the updated snapshot.
