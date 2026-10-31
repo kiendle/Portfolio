@@ -1,0 +1,22 @@
+{
+  "name": "kien-portfolio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "node --experimental-strip-types --test src/lib/*.test.ts"
+  },
+  "dependencies": {
+    "astro": "^5.16.0",
+    "number-flow": "^0.6.2"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@types/node": "^24.19.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,71 @@
+---
+import BlurLayers from './BlurLayers.astro';
+---
+
+<div class="page-reveal" aria-hidden="true">
+  <div class="page-reveal-clip">
+    <div class="page-reveal-boundary">
+      <BlurLayers />
+    </div>
+  </div>
+  <div class="page-reveal-solid"></div>
+</div>
+
+<style>
+  .page-reveal {
+    --reveal-depth: 320px;
+    --reveal-visible-depth: calc(var(--reveal-depth) * 0.84);
+    position: fixed;
+    z-index: 20;
+    inset: calc(-1 * var(--reveal-visible-depth)) 0 0;
+    pointer-events: none;
+    visibility: hidden;
+    animation: reveal-page 1000ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  .page-reveal-clip {
+    position: absolute;
+    inset: 0 0 auto;
+    height: var(--reveal-visible-depth);
+    overflow: hidden;
+  }
+
+  .page-reveal-boundary {
+    --blur-direction: to top;
+    position: absolute;
+    inset: 0 0 auto;
+    height: var(--reveal-depth);
+  }
+
+  .page-reveal-solid {
+    position: absolute;
+    inset: var(--reveal-visible-depth) 0 0;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  @keyframes reveal-page {
+    from {
+      visibility: visible;
+      transform: translateY(0);
+    }
+    to {
+      visibility: hidden;
+      transform: translateY(100%);
+    }
+  }
+
+  @media (max-width: 680px) {
+    .page-reveal {
+      --reveal-depth: 240px;
+      --reveal-visible-depth: calc(var(--reveal-depth) * 0.8);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-reveal {
+      display: none;
+      animation: none;
+    }
+  }
+</style>

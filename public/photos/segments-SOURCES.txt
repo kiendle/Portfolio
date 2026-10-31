@@ -1,0 +1,80 @@
+Homepage photo subject contours
+==============================
+
+Source
+------
+The site uses the two existing segmentations supplied by the site owner in
+sam_1463556455893292.png, a 1920x1080 annotated version of the same full photo.
+Kien is the purple-outlined left foreground person. Blue Jay is the
+orange-outlined center foreground mascot.
+
+Source PNG SHA-256:
+f9df3c9a2a9aa0f780359bb5b2ef77878ed6e1288c14dc553ebff639634b630e
+
+Aligned site image: public/photos/campus-1408.webp, 1408x792.
+Site image SHA-256:
+6e6936c1443780c70ff33cd7f5631d00423e426d683378c528d254daa7b0f9ff
+
+The supplied PNG's original segmentation model/method and annotation license
+were not provided. No model attribution or license for that annotation is
+invented here. The photo and supplied annotation remain their owners' material;
+this file does not relicense them. The annotated PNG is not republished by the
+site or required at runtime. Keep the original locally to reproduce the data.
+
+Extraction, not model inference
+-------------------------------
+Generator: scripts/extract-photo-segments.py
+Output: src/data/photo-segments.json
+
+1. Read the supplied PNG locally as RGB, without modifying it.
+2. Select its exact flat outline colors:
+   Kien: RGB(220,134,255), #dc86ff.
+   Blue Jay: RGB(215,66,18), #d74212.
+3. Flood-fill the enclosed region from a point well inside each supplied
+   segmentation: Kien (450,540), Blue Jay (1020,520), in source pixels. The image
+   frame closes the outlines where subjects leave the photo. Include the
+   painted outline pixels and its frame-edge fragments. No hand-drawn polygon,
+   new subject boundary estimate, or machine-learning inference is involved.
+4. Trace actual binary-mask contours with OpenCV RETR_TREE, retaining holes for
+   SVG fill-rule="evenodd". Check that the two supplied regions do not overlap.
+5. Scale both axes by 11/15 to the site's 1408x792 coordinate system. Simplify
+   contours using Douglas-Peucker with epsilon 0.65 output pixels; serialize
+   coordinates to two decimals. Points on the final source pixel row/column
+   extend to the photo frame. Bounds include full source pixel extents. Popup
+   anchors use the median horizontal coordinate in the top seven mask rows.
+
+The contours follow the outside of the supplied painted strokes; the stroke's
+own thickness and any imprecision already present in the supplied annotation
+are retained. No inference is used to reinterpret the owner's segmentation.
+The generator only reads local files and writes JSON and optional previews.
+There are no downloads, remote API calls, browser-side models, uploaded photos,
+model weights, or segmentation runtime dependencies in the site.
+
+Reproduction
+------------
+Requires Python 3.9 or later, NumPy, Pillow, and OpenCV. Generation used Python
+3.9.6, numpy 2.0.2, Pillow 10.4.0, and opencv-python 4.10.0.84. A separate
+reproduction environment can use the equivalent headless OpenCV wheel:
+
+  python3 -m venv /tmp/portfolio-photo-contour-venv
+  /tmp/portfolio-photo-contour-venv/bin/pip install numpy==2.0.2 Pillow==10.4.0 opencv-python-headless==4.10.0.84
+
+From the repository root, with the supplied PNG retained locally:
+
+  /tmp/portfolio-photo-contour-venv/bin/python scripts/extract-photo-segments.py "$HOME/Downloads/sam_1463556455893292.png" --preview-dir /tmp/portfolio-photo-supplied-segments
+
+The PNG input path is explicit; the script does not fetch or reconstruct it.
+Previews stay in the selected local directory, not in the site assets:
+  subjects-overlay.png
+  kien-source-extraction.png / bluejay-source-extraction.png
+  kien-source-mask.png / bluejay-source-mask.png
+  kien-mask.png / bluejay-mask.png
+  kien-cutout.png / bluejay-cutout.png
+
+Dependency sources/licenses
+---------------------------
+OpenCV 4.10: https://github.com/opencv/opencv/tree/4.10.0 (Apache-2.0).
+NumPy 2.0.2: https://github.com/numpy/numpy/tree/v2.0.2 (BSD-3-Clause).
+Pillow 10.4.0: https://github.com/python-pillow/Pillow/tree/10.4.0
+(HPND/Pillow license). These are offline development tools only; none is
+bundled into the browser application.

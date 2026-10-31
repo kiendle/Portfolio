@@ -1,0 +1,38 @@
+Application logo provenance
+Retrieved 2026-10-31. Brand marks identify applications in a personal software list; no endorsement is implied. All artwork is authentic upstream artwork, not redrawn or generated. Logos and names remain their owners' trademarks; repository software licenses do not grant trademark rights.
+Raster transformations: orca.png, tern.png, mtplx.png and kiro-crew.png are resized to 160x160 pixels using macOS sips. This is a size-only transformation preserving the authentic artwork, aspect ratio and alpha transparency; no vector redraw, recoloring or generated replacement. Oversized source copies are not shipped.
+
+OMP (oh-my-pi)
+Project: https://github.com/can1357/oh-my-pi
+Official website and link target: https://omp.sh/
+Artwork: https://omp.sh/favicon.svg
+Local: omp.svg (unmodified official website favicon, including its dark background for white-card contrast).
+Project license: MIT; see omp-LICENSE.txt.
+
+Orca
+Project: https://github.com/stablyai/orca
+Official website and link target: https://onorca.dev/
+Artwork: https://raw.githubusercontent.com/stablyai/orca/main/resources/build/icon.png
+Local: orca.png (official application icon, downsampled only).
+Project license: MIT; see orca-LICENSE.txt.
+
+Tern by Stencil
+Official website and link target: https://stencil.so/tern
+Artwork: /Applications/Tern.app/Contents/Resources/tern.icns from the installed Tern application, bundle identifier so.stencil.tern, version 0.9.8.
+Local: tern.png (PNG rendering of the authentic application icon, downsampled only).
+No separate redistributable artwork license was identified. Used only to identify the linked application, not licensed as original website artwork.
+
+MTPLX
+Project: https://github.com/youssofal/MTPLX
+Official website and link target: https://mtplx.com/
+Identity: mtplx.com identifies this project and YOYO STUDIOS INC.; it is the native Apple Silicon local-LLM application, not an unrelated similarly named product.
+Artwork: https://raw.githubusercontent.com/youssofal/MTPLX/main/apps/MTPLXApp/Resources/AppIcon.iconset/icon_256x256.png
+Local: mtplx.png (official application icon, downsampled only).
+Project license: Apache-2.0; see mtplx-LICENSE.txt and mtplx-NOTICE.txt.
+
+Kiro Crew
+Project and link target: https://github.com/kirodotdev/KiroCrew
+Official Kiro documentation: https://kiro.dev/docs/crew/
+Artwork: https://raw.githubusercontent.com/kirodotdev/KiroCrew/main/website/electron/icon.png
+Local: kiro-crew.png (stable-channel desktop application icon, downsampled only; not the generic Kiro IDE logo).
+Project license: Apache-2.0; see kiro-crew-LICENSE.txt and kiro-crew-NOTICE.txt.

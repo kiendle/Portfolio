@@ -1,0 +1,27 @@
+[
+  {
+    "name": "OMP",
+    "href": "https://omp.sh/",
+    "src": "/logos/omp.svg"
+  },
+  {
+    "name": "Orca",
+    "href": "https://onorca.dev/",
+    "src": "/logos/orca.png"
+  },
+  {
+    "name": "Tern",
+    "href": "https://stencil.so/tern",
+    "src": "/logos/tern.png"
+  },
+  {
+    "name": "MTPLX",
+    "href": "https://mtplx.com/",
+    "src": "/logos/mtplx.png"
+  },
+  {
+    "name": "Kiro Crew",
+    "href": "https://github.com/kirodotdev/KiroCrew",
+    "src": "/logos/kiro-crew.png"
+  }
+]

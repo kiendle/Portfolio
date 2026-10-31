@@ -1,0 +1,41 @@
+Portrait provenance
+Retrieved: 2026-10-31
+
+These photographs identify the people named on the My heroes cards. They are
+locally hosted derivatives, not generated images. The source pages establish
+identity; they do not, by themselves, establish permission for third-party reuse.
+No explicit reusable license or photographer credit was found for these images
+on the cited source pages. Copyright remains with the respective rights holders;
+no permission, public-domain status, or Creative Commons license is asserted.
+
+thuan-pham.jpg
+Person: Thuan Pham, Faire CTO; formerly Uber and Coupang CTO.
+Source page: https://www.faire.com/news/2025-09-18-get-to-know-faires-cto
+Original image URL: https://cdn.builder.io/api/v1/image/assets%2Fb138cbdde6204b4d948294b1cd59052c%2F186f459715264501bcc97be18a7e63db
+Source context: Faire's official September 18, 2025 interview with its CTO.
+Photographer/license: Not identified or stated on the source page.
+Transformation: Original 1170 x 766 JPEG; cropped to 600 x 600 at x=350,
+y=0 to center his head and shoulders, then resized to 256 x 256 and encoded
+as JPEG at quality 82 using macOS sips. No other visual edits.
+
+matt-pocock.jpg
+Person: Matt Pocock, TypeScript educator and author of Total TypeScript.
+Source page: https://www.mattpocock.com/
+Original image URL: https://www.mattpocock.com/face.jpeg
+Source context: His own home page labels this image "Matt Pocock".
+Photographer/license: Not identified or stated on the source page.
+Transformation: Original 400 x 400 JPEG; full composition retained, resized
+to 256 x 256 and encoded as JPEG at quality 82 using macOS sips.
+No other visual edits.
+
+gergely-orosz.jpg
+Person: Gergely Orosz, author of The Pragmatic Engineer.
+Source page: https://blog.pragmaticengineer.com/about/
+Original image URL: https://storage.ghost.io/c/39/f8/39f85cc7-8637-40fc-a57c-f45754453717/content/images/2015/12/pragmatic-engineer-profile-image.png
+Source context: His official blog's author sidebar displays this profile image
+immediately above "by Gergely Orosz". This is not a testimonial portrait.
+Photographer/license: Not identified or stated on the source page.
+Transformation: Original 300 x 338 PNG; center-cropped to 300 x 300
+(x=0, y=19), resized to 256 x 256 and encoded as JPEG at quality 82
+using macOS sips. The source photograph is already monochrome; no color
+conversion or other visual edits were applied.

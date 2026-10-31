@@ -1,0 +1,519 @@
+---
+import usage from '../data/usage.json';
+import {
+  buildUsageCalendar,
+  dayDescription,
+  formatUpdatedAt,
+  formatTokens,
+  todayInTimeZone,
+  usageYears,
+  type UsageData,
+} from '../lib/usage-calendar';
+
+const data: UsageData = usage;
+const today = todayInTimeZone(data.timeZone);
+const years = usageYears(data.days, today);
+const year = years[0];
+const calendar = buildUsageCalendar(data.days, year, today);
+const hasUsage = data.days.some((day) => day.date <= today);
+const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
+---
+
+<token-usage-calendar>
+  <section class="usage-section" aria-labelledby="token-usage-heading">
+    <header class="usage-heading">
+      <h2 id="token-usage-heading">Token usage</h2>
+      <label class="usage-year" for="token-usage-year">
+        <span class="usage-sr-only">Usage year</span>
+        <select id="token-usage-year" data-year aria-label="Usage year">
+          {years.map((value) => <option value={value} selected={value === year}>{value}</option>)}
+        </select>
+      </label>
+    </header>
+
+    <div class="usage-card">
+      <p class="usage-summary" data-summary aria-live="polite" aria-atomic="true" hidden={!hasUsage}>
+        <span class="usage-sr-only" data-summary-label>{formatTokens(calendar.totalTokens)} in {year}</span>
+        <strong class="usage-total" aria-hidden="true">
+          <span data-total-fallback>{calendar.totalTokens.toLocaleString('en-US')}</span>
+          <number-flow data-total-number hidden></number-flow>
+        </strong>{' '}
+        <span data-summary-context aria-hidden="true">{calendar.totalTokens === 1 ? 'token' : 'tokens'} in {year}</span>
+      </p>
+      <p class="usage-empty" data-empty hidden={hasUsage}>No collected usage yet.</p>
+
+      <div class="usage-scroll" data-calendar-shell hidden={!hasUsage}>
+        <div class="usage-calendar" data-calendar style={`--weeks: ${calendar.weeks}`}>
+          <div aria-hidden="true"></div>
+          <div class="usage-months" data-months aria-hidden="true">
+            {calendar.months.map((month) => (
+              <span class="usage-month" style={`grid-column: ${month.week + 1}`}>{month.label}</span>
+            ))}
+          </div>
+          <div class="usage-weekdays" aria-hidden="true">
+            {weekdays.map((weekday, index) => <span>{index % 2 === 1 ? weekday.slice(0, 3) : ''}</span>)}
+          </div>
+          <div
+            class="usage-grid"
+            data-grid
+            role="grid"
+            aria-label={`Daily token usage for ${year}`}
+            aria-describedby="token-usage-help"
+            aria-rowcount="7"
+            aria-colcount={calendar.weeks}
+          >
+            {calendar.rows.map((row, rowIndex) => (
+              <div class="usage-row" role="row" aria-label={weekdays[rowIndex]} aria-rowindex={rowIndex + 1}>
+                {row.map((day, week) => (
+                  <div
+                    class="usage-cell"
+                    role="gridcell"
+                    aria-colindex={week + 1}
+                    aria-hidden={day ? undefined : 'true'}
+                    style={`grid-column: ${week + 1}; grid-row: ${rowIndex + 1}`}
+                  >
+                    {day && (
+                      <button
+                        type="button"
+                        class="usage-day"
+                        data-index={day.index}
+                        data-level={day.level}
+                        aria-label={dayDescription(day)}
+                        tabindex={day.index === calendar.days.length - 1 ? 0 : -1}
+                      ></button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div class="usage-key" data-key hidden={!hasUsage} aria-label="Color scale: less to more token usage">
+        <span>Less</span>
+        <span class="usage-swatches" aria-hidden="true">
+          {[0, 1, 2, 3, 4].map((level) => <i data-level={level}></i>)}
+        </span>
+        <span>More</span>
+      </div>
+      <p class="usage-updated">
+        {data.updatedAt ? <>Updated <time datetime={data.updatedAt}>{formatUpdatedAt(data.updatedAt, data.timeZone)}</time></> : 'Not collected yet'}
+        <span aria-hidden="true"> · </span><span>Dates in {data.timeZone.replaceAll('_', ' ')}</span>
+      </p>
+    </div>
+
+    <p id="token-usage-help" class="usage-sr-only">
+      Use the arrow keys to explore days. Home and End move across a weekday row.
+      Control or Command plus Home and End move to the first or last day. Tap a day to inspect it.
+    </p>
+    <div id="token-usage-tooltip" class="usage-tooltip" data-tooltip popover="manual" role="tooltip">
+      <strong data-tooltip-count></strong>
+      <span data-tooltip-date></span>
+    </div>
+    <script is:inline type="application/json" data-usage set:html={serialized}></script>
+  </section>
+</token-usage-calendar>
+
+<script>
+  import 'number-flow';
+  import type NumberFlow from 'number-flow';
+  import {
+    buildUsageCalendar,
+    dayDescription,
+    formatTokens,
+    todayInTimeZone,
+    usageYears,
+    type UsageData,
+  } from '../lib/usage-calendar';
+
+  class TokenUsageCalendar extends HTMLElement {
+    private cleanup?: () => void;
+
+    connectedCallback() {
+      if (this.cleanup) return;
+
+      const controller = new AbortController();
+      const { signal } = controller;
+      const data: UsageData = JSON.parse(this.querySelector('[data-usage]')!.textContent!);
+      const select = this.querySelector<HTMLSelectElement>('[data-year]')!;
+      const summary = this.querySelector<HTMLElement>('[data-summary]')!;
+      const summaryLabel = summary.querySelector<HTMLElement>('[data-summary-label]')!;
+      const summaryContext = summary.querySelector<HTMLElement>('[data-summary-context]')!;
+      const totalFallback = summary.querySelector<HTMLElement>('[data-total-fallback]')!;
+      const totalNumber = summary.querySelector<NumberFlow>('[data-total-number]')!;
+      const empty = this.querySelector<HTMLElement>('[data-empty]')!;
+      const shell = this.querySelector<HTMLElement>('[data-calendar-shell]')!;
+      const canvas = this.querySelector<HTMLElement>('[data-calendar]')!;
+      const months = this.querySelector<HTMLElement>('[data-months]')!;
+      const grid = this.querySelector<HTMLElement>('[data-grid]')!;
+      const key = this.querySelector<HTMLElement>('[data-key]')!;
+      const tooltip = this.querySelector<HTMLElement>('[data-tooltip]')!;
+      const tooltipCount = tooltip.querySelector<HTMLElement>('[data-tooltip-count]')!;
+      const tooltipDate = tooltip.querySelector<HTMLElement>('[data-tooltip-date]')!;
+      const tooltipDateFormatter = new Intl.DateTimeFormat('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+      });
+      const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      let today = todayInTimeZone(data.timeZone);
+      let year = Number(select.value);
+      let calendar = buildUsageCalendar(data.days, year, today);
+      let buttons: HTMLButtonElement[] = [];
+      let activeIndex = 0;
+      let focused: HTMLButtonElement | null = null;
+      let tapped: HTMLButtonElement | null = null;
+      let tooltipButton: HTMLButtonElement | null = null;
+      let tooltipTimer: ReturnType<typeof setTimeout> | undefined;
+      let scrollFrame: number | undefined;
+      let positionedDate: string | undefined;
+      let revealed = false;
+      let statisticObserver: IntersectionObserver | undefined;
+
+      totalNumber.locales = 'en-US';
+      totalNumber.format = { maximumFractionDigits: 0 };
+      totalNumber.trend = 1;
+      // Keep the digit roll, but disable horizontal width/position transitions.
+      totalNumber.spinTiming = totalNumber.transformTiming;
+      totalNumber.transformTiming = { duration: 0 };
+      totalNumber.animated = false;
+      // Seed every digit column so the first reveal does not expand in from the sides.
+      totalNumber.update(calendar.totalTokens > 0 ? 10 ** Math.floor(Math.log10(calendar.totalTokens)) : 0);
+      totalNumber.animated = true;
+      totalNumber.hidden = false;
+      totalFallback.parentElement!.classList.add('is-animated');
+
+      const revealTotal = () => {
+        revealed = true;
+        totalNumber.update(calendar.totalTokens);
+        statisticObserver?.disconnect();
+      };
+
+      const hideTooltip = () => {
+        if (tooltipTimer) clearTimeout(tooltipTimer);
+        tooltip.classList.remove('is-scrubbing');
+        tooltipButton?.removeAttribute('aria-describedby');
+        tooltipButton = null;
+        if (tooltip.matches(':popover-open')) tooltip.hidePopover();
+      };
+
+      const positionTooltip = () => {
+        if (!tooltipButton || !tooltip.matches(':popover-open')) return;
+        const anchor = tooltipButton.getBoundingClientRect();
+        const viewport = shell.getBoundingClientRect();
+        if (anchor.right < viewport.left || anchor.left > viewport.right || anchor.bottom < 0 || anchor.top > window.innerHeight) {
+          hideTooltip();
+          return;
+        }
+        const size = tooltip.getBoundingClientRect();
+        const leftEdge = Math.max(12, viewport.left);
+        const rightEdge = Math.min(window.innerWidth - 12, viewport.right);
+        const left = Math.max(12, Math.min(Math.max(leftEdge, anchor.left + anchor.width / 2 - size.width / 2), rightEdge - size.width));
+        const top = anchor.top >= size.height + 8 ? anchor.top - size.height - 6 : anchor.bottom + 6;
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${Math.max(8, Math.min(top, window.innerHeight - size.height - 8))}px`;
+      };
+
+      const showTooltip = (button: HTMLButtonElement, scrub = false) => {
+        if (tooltipTimer) clearTimeout(tooltipTimer);
+        const blurUpdate = scrub && tooltipButton !== button && tooltip.matches(':popover-open');
+        tooltipButton?.removeAttribute('aria-describedby');
+        tooltipButton = button;
+        const day = calendar.days[Number(button.dataset.index)];
+        tooltipCount.textContent = formatTokens(day.tokens);
+        tooltipDate.textContent = tooltipDateFormatter.format(new Date(`${day.date}T00:00:00Z`));
+        tooltip.classList.toggle('is-scrubbing', blurUpdate);
+        if (blurUpdate) {
+          tooltipTimer = setTimeout(() => tooltip.classList.remove('is-scrubbing'), 100);
+        }
+        button.setAttribute('aria-describedby', tooltip.id);
+        if (!tooltip.matches(':popover-open')) tooltip.showPopover();
+        positionTooltip();
+      };
+
+      const settleTooltip = () => {
+        const button = focused ?? tapped;
+        if (button) showTooltip(button);
+        else hideTooltip();
+      };
+
+      const setActive = (button: HTMLButtonElement) => {
+        if (buttons[activeIndex]) buttons[activeIndex].tabIndex = -1;
+        activeIndex = Number(button.dataset.index);
+        button.tabIndex = 0;
+      };
+
+      const render = () => {
+        const retainFocus = grid.contains(document.activeElement);
+        const previousDate = retainFocus ? calendar.days[activeIndex]?.date : undefined;
+        hideTooltip();
+        focused = tapped = null;
+        const years = usageYears(data.days, today);
+        if (!years.includes(year)) year = years[0];
+        select.replaceChildren(...years.map((value) => new Option(String(value), String(value), false, value === year)));
+        calendar = buildUsageCalendar(data.days, year, today);
+        const hasUsage = data.days.some((day) => day.date <= today);
+        summary.hidden = !hasUsage;
+        empty.hidden = hasUsage;
+        shell.hidden = !hasUsage;
+        key.hidden = !hasUsage;
+        summaryLabel.textContent = `${formatTokens(calendar.totalTokens)} in ${year}`;
+        summaryContext.textContent = `${calendar.totalTokens === 1 ? 'token' : 'tokens'} in ${year}`;
+        totalFallback.textContent = calendar.totalTokens.toLocaleString('en-US');
+        if (revealed) totalNumber.update(calendar.totalTokens);
+        canvas.style.setProperty('--weeks', String(calendar.weeks));
+        grid.setAttribute('aria-label', `Daily token usage for ${year}`);
+        grid.setAttribute('aria-colcount', String(calendar.weeks));
+        months.replaceChildren(...calendar.months.map((month) => {
+          const label = document.createElement('span');
+          label.className = 'usage-month';
+          label.style.gridColumn = String(month.week + 1);
+          label.textContent = month.label;
+          return label;
+        }));
+        buttons = [];
+        const previousIndex = previousDate ? calendar.days.findIndex((day) => day.date === previousDate) : -1;
+        activeIndex = previousIndex >= 0 ? previousIndex : calendar.days.length - 1;
+        const rows = calendar.rows.map((row, rowIndex) => {
+          const element = document.createElement('div');
+          element.className = 'usage-row';
+          element.setAttribute('role', 'row');
+          element.setAttribute('aria-label', weekdays[rowIndex]);
+          element.setAttribute('aria-rowindex', String(rowIndex + 1));
+          row.forEach((day, week) => {
+            const cell = document.createElement('div');
+            cell.className = 'usage-cell';
+            cell.setAttribute('role', 'gridcell');
+            cell.setAttribute('aria-colindex', String(week + 1));
+            cell.style.gridColumn = String(week + 1);
+            cell.style.gridRow = String(rowIndex + 1);
+            if (day) {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'usage-day';
+              button.dataset.index = String(day.index);
+              button.dataset.level = String(day.level);
+              button.setAttribute('aria-label', dayDescription(day));
+              button.tabIndex = day.index === activeIndex ? 0 : -1;
+              buttons[day.index] = button;
+              cell.append(button);
+            } else cell.setAttribute('aria-hidden', 'true');
+            element.append(cell);
+          });
+          return element;
+        });
+        grid.replaceChildren(...rows);
+        if (retainFocus) buttons[activeIndex]?.focus({ preventScroll: true });
+
+        const latestDate = calendar.days[calendar.days.length - 1]?.date;
+        if (latestDate !== positionedDate) {
+          positionedDate = latestDate;
+          if (scrollFrame !== undefined) window.cancelAnimationFrame(scrollFrame);
+          scrollFrame = window.requestAnimationFrame(() => {
+            scrollFrame = undefined;
+            const latest = buttons[calendar.days.length - 1];
+            const overflow = shell.scrollWidth - shell.clientWidth;
+            if (!latest || shell.hidden || overflow <= 0 || grid.contains(document.activeElement)) return;
+            // Move only this scroller, without focusing a day or scrolling the page.
+            const viewport = shell.getBoundingClientRect();
+            const target = shell.scrollLeft + latest.getBoundingClientRect().right
+              - viewport.right + parseFloat(getComputedStyle(shell).paddingRight);
+            shell.scrollLeft = Math.max(0, Math.min(overflow, target));
+          });
+        }
+      };
+
+      select.addEventListener('change', () => {
+        year = Number(select.value);
+        render();
+      }, { signal });
+
+      grid.addEventListener('focusin', (event) => {
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>('.usage-day');
+        if (!button) return;
+        focused = button.matches(':focus-visible') ? button : null;
+        setActive(button);
+        button.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        if (focused) showTooltip(button);
+      }, { signal });
+      grid.addEventListener('focusout', () => {
+        focused = tapped = null;
+        settleTooltip();
+      }, { signal });
+      grid.addEventListener('pointerover', (event) => {
+        if (event.pointerType === 'touch') return;
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>('.usage-day');
+        if (!button) return;
+        showTooltip(button, true);
+      }, { signal });
+      grid.addEventListener('pointerout', (event) => {
+        if (event.pointerType === 'touch') return;
+        // Keep one popover through cell gaps instead of closing/reopening it.
+        if (event.relatedTarget instanceof Node && grid.contains(event.relatedTarget)) {
+          if (tooltipTimer) clearTimeout(tooltipTimer);
+          tooltip.classList.add('is-scrubbing');
+          tooltipTimer = setTimeout(settleTooltip, 100);
+          return;
+        }
+        settleTooltip();
+      }, { signal });
+      grid.addEventListener('pointerup', (event) => {
+        if (event.pointerType !== 'touch') return;
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>('.usage-day');
+        if (!button) return;
+        tapped = button;
+        setActive(button);
+        showTooltip(button);
+      }, { signal });
+      grid.addEventListener('keydown', (event) => {
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>('.usage-day');
+        if (!button) return;
+        const day = calendar.days[Number(button.dataset.index)];
+        let next = day.index;
+        switch (event.key) {
+          case 'ArrowLeft': next -= 7; break;
+          case 'ArrowRight': next += 7; break;
+          case 'ArrowUp': if (day.weekday > 0) next--; break;
+          case 'ArrowDown': if (day.weekday < 6) next++; break;
+          case 'Home': next = event.ctrlKey || event.metaKey ? 0 : day.index % 7; break;
+          case 'End': next = event.ctrlKey || event.metaKey ? buttons.length - 1 : day.index + Math.floor((buttons.length - 1 - day.index) / 7) * 7; break;
+          case 'Escape':
+            event.preventDefault();
+            tapped = null;
+            hideTooltip();
+            return;
+          default: return;
+        }
+        event.preventDefault();
+        const target = buttons[next];
+        if (!target) return;
+        setActive(target);
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        showTooltip(target);
+      }, { signal });
+      document.addEventListener('pointerdown', (event) => {
+        const target = event.target as Node;
+        if (grid.contains(target) || tooltip.contains(target)) return;
+        tapped = null;
+        hideTooltip();
+      }, { signal });
+      window.addEventListener('scroll', positionTooltip, { capture: true, passive: true, signal });
+      window.addEventListener('resize', positionTooltip, { passive: true, signal });
+
+      const refreshToday = () => {
+        const current = todayInTimeZone(data.timeZone);
+        if (current === today) return;
+        today = current;
+        render();
+      };
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshToday();
+      }, { signal });
+      const dayBoundaryCheck = window.setInterval(() => {
+        if (!document.hidden) refreshToday();
+      }, 60_000);
+
+      // A static build may have been generated before the current local day.
+      render();
+      if ('IntersectionObserver' in window) {
+        statisticObserver = new IntersectionObserver(([entry]) => {
+          if (entry?.isIntersecting) revealTotal();
+        }, { threshold: 0.5 });
+        statisticObserver.observe(summary);
+      } else {
+        revealTotal();
+      }
+      this.cleanup = () => {
+        controller.abort();
+        statisticObserver?.disconnect();
+        totalNumber.animated = false;
+        window.clearInterval(dayBoundaryCheck);
+        if (scrollFrame !== undefined) window.cancelAnimationFrame(scrollFrame);
+        hideTooltip();
+      };
+    }
+
+    disconnectedCallback() {
+      this.cleanup?.();
+      this.cleanup = undefined;
+    }
+  }
+
+  if (!customElements.get('token-usage-calendar')) {
+    customElements.define('token-usage-calendar', TokenUsageCalendar);
+  }
+</script>
+
+<style>
+  token-usage-calendar {
+    display: block;
+    min-width: 0;
+    --usage-0: #edf1ec;
+    --usage-1: #9ced68;
+    --usage-2: #4ade32;
+    --usage-3: #16c343;
+    --usage-4: #00a83e;
+  }
+
+  .usage-section { min-width: 0; }
+  .usage-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.85rem; }
+  h2 { margin: 0; font: inherit; font-size: 1.25rem; letter-spacing: -0.025em; color: #292e25; }
+  .usage-year select { padding: 0.32rem 1.6rem 0.32rem 0.65rem; border: 1px solid #e3e7de; border-radius: 5px; background-color: #fff; color: #59604f; font: inherit; font-size: 0.8rem; cursor: var(--cursor-pointer, pointer); }
+  .usage-year select:focus-visible { outline: 2px solid #638753; outline-offset: 3px; }
+  .usage-card { box-sizing: border-box; width: 100%; min-width: 0; padding: 1rem; border: 1px solid #e5e9df; border-radius: 7px; background: #fff; }
+  .usage-summary { margin: 0 0 1rem; font-size: 0.85rem; line-height: 1.4; color: #464c3e; }
+  .usage-total { display: inline-grid; align-items: baseline; color: var(--usage-4); font-family: 'Getai Grotesk', sans-serif; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .usage-total > * { grid-area: 1 / 1; }
+  .usage-total.is-animated [data-total-fallback] { visibility: hidden; }
+  .usage-total number-flow { display: inline-block; font: inherit; font-variant-numeric: tabular-nums; line-height: 0.9; --number-flow-mask-height: 0.12em; --number-flow-mask-width: 0.18em; }
+  .usage-total number-flow[hidden] { display: none; }
+  .usage-empty { margin: 0; padding-block: 1.75rem 2rem; color: #858a7c; text-align: center; font-size: 0.9rem; }
+  .usage-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 16px 3px 7px; scrollbar-width: thin; scrollbar-color: #d4dccc transparent; }
+  .usage-calendar { display: grid; grid-template-columns: 25px minmax(0, 1fr); grid-template-rows: 17px auto; gap: 5px 8px; min-width: min(610px, calc(var(--weeks) * 17px + 33px)); max-width: calc(var(--weeks) * 17px + 33px); }
+  .usage-months { display: grid; grid-template-columns: repeat(var(--weeks), minmax(0, 1fr)); gap: 3px; align-items: start; color: #7c8373; font-size: 0.63rem; line-height: 1; }
+  .usage-months :global(.usage-month) { white-space: nowrap; }
+  .usage-weekdays { display: grid; grid-template-rows: repeat(7, minmax(0, 1fr)); gap: 3px; color: #8a9081; font-size: 0.61rem; line-height: 1; }
+  .usage-weekdays span { display: flex; align-items: center; }
+  .usage-grid { display: grid; grid-template-columns: repeat(var(--weeks), minmax(0, 1fr)); grid-template-rows: repeat(7, minmax(0, 1fr)); gap: 3px; }
+  .usage-grid :global(.usage-row) { display: contents; }
+  .usage-grid :global(.usage-cell) { min-width: 0; aspect-ratio: 1; }
+  .usage-grid :global(.usage-day) { display: block; box-sizing: border-box; width: 100%; height: 100%; padding: 0; border: 1px solid rgb(48 65 35 / 5%); border-radius: 2px; background: var(--usage-0); cursor: var(--cursor-pointer, pointer); touch-action: manipulation; }
+  .usage-grid :global(.usage-day[data-level='1']) { background: var(--usage-1); }
+  .usage-grid :global(.usage-day[data-level='2']) { background: var(--usage-2); }
+  .usage-grid :global(.usage-day[data-level='3']) { background: var(--usage-3); }
+  .usage-grid :global(.usage-day[data-level='4']) { background: var(--usage-4); }
+  .usage-grid :global(.usage-day:hover), .usage-grid :global(.usage-day:focus-visible) { outline: 2px solid #4d703d; outline-offset: 1px; }
+  .usage-key { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 0.5rem; color: #939988; font-size: 0.65rem; }
+  .usage-key[hidden] { display: none; }
+  .usage-swatches { display: flex; gap: 3px; }
+  .usage-swatches i { width: 9px; height: 9px; border: 1px solid rgb(48 65 35 / 5%); border-radius: 2px; background: var(--usage-0); }
+  .usage-swatches [data-level='1'] { background: var(--usage-1); }
+  .usage-swatches [data-level='2'] { background: var(--usage-2); }
+  .usage-swatches [data-level='3'] { background: var(--usage-3); }
+  .usage-swatches [data-level='4'] { background: var(--usage-4); }
+  .usage-updated { margin: 0.85rem 0 0; color: #969c8e; font-size: 0.65rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .usage-tooltip { position: fixed; inset: auto; z-index: 30; box-sizing: border-box; width: max-content; max-width: calc(100vw - 24px); margin: 0; padding: 0.3rem 0.45rem; border: 0; border-radius: 4px; background: #1b2e20; color: #fff; box-shadow: 0 2px 6px rgb(20 40 25 / 10%); font: inherit; font-size: 0.68rem; line-height: 1.4; pointer-events: none; opacity: 0; filter: blur(3px); transform: translateY(2px); transition: opacity 140ms ease, filter 100ms ease, transform 140ms ease, display 140ms allow-discrete, overlay 140ms allow-discrete; }
+  .usage-tooltip:popover-open { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.4rem; opacity: 1; filter: blur(0); transform: translateY(0); }
+  .usage-tooltip:popover-open.is-scrubbing { filter: blur(1px); }
+  @starting-style {
+    .usage-tooltip:popover-open { opacity: 0; filter: blur(3px); transform: translateY(2px); }
+  }
+  .usage-tooltip strong { font: inherit; }
+  .usage-tooltip span { color: #c3d4c6; }
+  .usage-tooltip span::before { content: '·'; margin-right: 0.4rem; }
+  .usage-tooltip::backdrop { background: transparent; pointer-events: none; }
+  .usage-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .usage-tooltip { transition: none; filter: none; transform: none; }
+    .usage-tooltip:popover-open.is-scrubbing { filter: none; }
+  }
+  @media (max-width: 480px) {
+    .usage-card { padding: 0.85rem; }
+    .usage-heading { margin-bottom: 0.7rem; }
+    .usage-summary { font-size: 0.8rem; }
+  }
+  @media (pointer: coarse) {
+    .usage-calendar { min-width: calc(var(--weeks) * 27px + 30px); }
+  }
+</style>

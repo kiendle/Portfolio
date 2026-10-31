@@ -1,0 +1,39 @@
+---
+import BlurLayers from './BlurLayers.astro';
+---
+
+<div class="progressive-blur top-blur" aria-hidden="true">
+  <BlurLayers />
+</div>
+
+<div class="progressive-blur bottom-blur" aria-hidden="true">
+  <BlurLayers />
+</div>
+
+<style>
+  .progressive-blur {
+    position: fixed;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    height: 200px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .top-blur {
+    top: -32px;
+    --blur-direction: to bottom;
+  }
+
+  .bottom-blur {
+    bottom: -32px;
+    --blur-direction: to top;
+  }
+
+  @media (max-width: 680px) {
+    .progressive-blur {
+      height: 160px;
+    }
+  }
+</style>

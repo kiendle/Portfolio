@@ -1,0 +1,213 @@
+<liquid-link-cursor hidden aria-hidden="true">
+  <svg width="80" height="80" viewBox="-40 -40 80 80" fill="none" focusable="false">
+    <defs>
+      <g id="liquid-link-cursor-shape">
+        <path class="cursor-contour" />
+        <path class="cursor-shaft" />
+      </g>
+    </defs>
+    <g class="cursor-outline">
+      <use href="#liquid-link-cursor-shape" stroke="white" stroke-width="3.5" />
+      <use href="#liquid-link-cursor-shape" stroke="#292925" stroke-width="1.1" />
+    </g>
+    <circle class="cursor-hotspot" r="3.5" fill="#292925" stroke="white" stroke-width="1.5" />
+  </svg>
+</liquid-link-cursor>
+
+<style>
+  liquid-link-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width: 80px;
+    height: 80px;
+    pointer-events: none;
+    contain: layout style;
+  }
+  liquid-link-cursor[hidden] { display: none; }
+  svg { display: block; overflow: visible; }
+  .cursor-outline { stroke-linecap: round; stroke-linejoin: round; }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+    :global(.app-card[data-liquid-cursor]),
+    :global(.hero-card[data-liquid-cursor]),
+    :global(.app-card[data-liquid-cursor] *),
+    :global(.hero-card[data-liquid-cursor] *) { cursor: none; }
+  }
+  @media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce), (forced-colors: active) {
+    liquid-link-cursor { display: none; }
+  }
+</style>
+
+<script>
+  class LiquidLinkCursor extends HTMLElement {
+    private cleanup?: () => void;
+
+    connectedCallback() {
+      if (this.cleanup) return;
+      const controller = new AbortController();
+      const { signal } = controller;
+      const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const forcedColors = matchMedia('(forced-colors: active)');
+      const contour = this.querySelector<SVGPathElement>('.cursor-contour')!;
+      const shaft = this.querySelector<SVGPathElement>('.cursor-shaft')!;
+      const hotspot = this.querySelector<SVGCircleElement>('.cursor-hotspot')!;
+      const outline = this.querySelector<SVGGElement>('.cursor-outline')!;
+      const links = [...document.querySelectorAll<HTMLAnchorElement>('.app-card, .hero-card')];
+      const state = { width: 7, height: 7, arrow: 0, widthSpeed: 0, heightSpeed: 0, arrowSpeed: 0 };
+      const goals = { width: 7, height: 7, arrow: 0 };
+      const axes = [
+        { value: 'width', speed: 'widthSpeed' },
+        { value: 'height', speed: 'heightSpeed' },
+        { value: 'arrow', speed: 'arrowSpeed' },
+      ] as const;
+      let active: HTMLAnchorElement | null = null;
+      let pointerX = 0;
+      let pointerY = 0;
+      let bendX = 0;
+      let bendY = 0;
+      let pressed = false;
+      let frame = 0;
+      let previousTime = 0;
+      let morph = 0;
+      const mix = (lens: number, arrow: number) => lens + (arrow - lens) * morph;
+
+      const draw = () => {
+        const x = state.width / 2;
+        const y = state.height / 2;
+        const cx = x * .55228475;
+        const cy = y * .55228475;
+        const limit = Math.min(x, y) * .25;
+        const dx = Math.max(-limit, Math.min(limit, bendX));
+        const dy = Math.max(-limit, Math.min(limit, bendY));
+        morph = Math.max(0, Math.min(1, state.arrow));
+        // The lens folds into the arrowhead while its handle becomes the shaft.
+        contour.setAttribute('d', `M ${mix(0, -x * .875)} ${-y}
+          C ${mix(cx, -x * .25) + dx} ${-y - dy}
+            ${mix(x, x * .375) + dx * .5} ${mix(-cy, -y)} ${x} ${mix(0, -y)}
+          C ${x + dx} ${mix(cy, -y * .375)}
+            ${mix(cx, x)} ${mix(y, y * .25) + dy} ${mix(0, x)} ${mix(y, y * .875)}
+          C ${mix(-cx, x)} ${mix(y, y * .25) + dy}
+            ${mix(-x, x) - dx} ${mix(cy, -y * .375)} ${mix(-x, x)} ${mix(0, -y)}
+          C ${mix(-x, x) - dx} ${mix(-cy, -y)}
+            ${mix(-cx, -x * .25)} ${-y - dy} ${mix(0, -x * .875)} ${-y} Z`);
+        shaft.setAttribute('d', `M ${mix(x * .7, -x)} ${mix(y * .7, y)}
+          L ${mix(x + 9, x)} ${mix(y + 9, -y)}`);
+        this.style.transform = `translate3d(${pointerX - 40}px, ${pointerY - 40}px, 0)`;
+        const reveal = Math.max(0, Math.min(1, (Math.max(state.width, state.height) - 7) / 8));
+        outline.style.opacity = String(reveal);
+        hotspot.style.opacity = String(1 - reveal);
+      };
+
+      const hide = () => {
+        active?.removeAttribute('data-liquid-cursor');
+        active = null;
+        pressed = false;
+        this.hidden = true;
+        cancelAnimationFrame(frame);
+        frame = previousTime = 0;
+        state.width = state.height = 7;
+        state.arrow = 0;
+        state.widthSpeed = state.heightSpeed = state.arrowSpeed = 0;
+        bendX = bendY = 0;
+      };
+
+      const tick = (time: number) => {
+        frame = 0;
+        const dt = previousTime ? Math.min((time - previousTime) / 1000, 1 / 30) : 1 / 60;
+        previousTime = time;
+        let settled = true;
+        for (const { value, speed } of axes) {
+          state[speed] += ((goals[value] - state[value]) * 550 - state[speed] * 34) * dt;
+          state[value] += state[speed] * dt;
+          if (Math.abs(goals[value] - state[value]) > .01 || Math.abs(state[speed]) > .05) settled = false;
+        }
+        bendX *= Math.exp(-12 * dt);
+        bendY *= Math.exp(-12 * dt);
+        draw();
+        if (!settled || Math.abs(bendX) > .01 || Math.abs(bendY) > .01) frame = requestAnimationFrame(tick);
+        else {
+          previousTime = 0;
+          if (!active) hide();
+        }
+      };
+
+      const updateShape = () => {
+        const hero = active?.classList.contains('hero-card');
+        goals.width = active ? (hero ? 18 : 24) + (pressed ? 3 : 0) : 7;
+        goals.height = active ? (hero ? 18 : 24) * (pressed ? .76 : 1) : 7;
+        goals.arrow = hero ? 1 : 0;
+        if (!frame) frame = requestAnimationFrame(tick);
+      };
+
+      const move = (event: PointerEvent) => {
+        bendX = Math.max(-8, Math.min(8, (event.clientX - pointerX) * .4));
+        bendY = Math.max(-8, Math.min(8, (event.clientY - pointerY) * .4));
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        draw();
+        if (!frame) frame = requestAnimationFrame(tick);
+      };
+
+      const enter = (link: HTMLAnchorElement, event: PointerEvent) => {
+        if (event.pointerType !== 'mouse' || !finePointer.matches || reducedMotion.matches || forcedColors.matches) return;
+        active?.removeAttribute('data-liquid-cursor');
+        active = link;
+        pressed = event.buttons === 1;
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        this.hidden = false;
+        draw();
+        link.setAttribute('data-liquid-cursor', '');
+        updateShape();
+      };
+
+      for (const link of links) {
+        link.addEventListener('pointerenter', event => enter(link, event), { signal });
+        link.addEventListener('pointermove', event => {
+          if (event.pointerType !== 'mouse') { hide(); return; }
+          if (active !== link) enter(link, event);
+          if (active === link) move(event);
+        }, { passive: true, signal });
+        link.addEventListener('pointerleave', () => {
+          if (active !== link) return;
+          link.removeAttribute('data-liquid-cursor');
+          active = null;
+          pressed = false;
+          updateShape();
+        }, { signal });
+        link.addEventListener('pointerdown', event => {
+          if (active !== link || event.button !== 0) return;
+          pressed = true;
+          updateShape();
+        }, { signal });
+        link.addEventListener('dragstart', hide, { signal });
+      }
+      document.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'mouse') hide();
+      }, { capture: true, signal });
+      document.addEventListener('pointermove', event => {
+        if (!active && !this.hidden && event.pointerType === 'mouse') move(event);
+      }, { passive: true, signal });
+      document.addEventListener('pointerout', event => { if (!event.relatedTarget) hide(); }, { signal });
+      window.addEventListener('pointerup', () => { if (active) { pressed = false; updateShape(); } }, { signal });
+      window.addEventListener('pointercancel', hide, { signal });
+      window.addEventListener('blur', hide, { signal });
+      window.addEventListener('scroll', hide, { capture: true, passive: true, signal });
+      window.addEventListener('resize', hide, { passive: true, signal });
+      document.addEventListener('keydown', hide, { signal });
+      document.addEventListener('visibilitychange', () => { if (document.hidden) hide(); }, { signal });
+      finePointer.addEventListener('change', hide, { signal });
+      reducedMotion.addEventListener('change', hide, { signal });
+      forcedColors.addEventListener('change', hide, { signal });
+      this.cleanup = () => { hide(); controller.abort(); };
+    }
+
+    disconnectedCallback() {
+      this.cleanup?.();
+      this.cleanup = undefined;
+    }
+  }
+  if (!customElements.get('liquid-link-cursor')) customElements.define('liquid-link-cursor', LiquidLinkCursor);
+</script>

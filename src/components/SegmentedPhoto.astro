@@ -1,0 +1,653 @@
+---
+import segments from '../data/photo-segments.json';
+---
+
+<figure class="photo-section segmented-photo" data-segmented-photo>
+  <img
+    class="campus-photo"
+    src="/photos/campus-1408.webp"
+    srcset="/photos/campus-400.webp 400w, /photos/campus-704.webp 704w, /photos/campus-1056.webp 1056w, /photos/campus-1408.webp 1408w"
+    sizes="(max-width: 748px) calc(100vw - 48px), 700px"
+    width="1408"
+    height="792"
+    alt="Kien taking a selfie with the Blue Jay mascot at an outdoor gathering."
+    loading="eager"
+    decoding="async"
+    fetchpriority="high"
+  />
+  <svg
+    class="subject-overlay"
+    viewBox={`0 0 ${segments.width} ${segments.height}`}
+    width={segments.width}
+    height={segments.height}
+    role="group"
+    aria-label="People in the photo"
+    aria-describedby="photo-subject-instructions"
+    data-image-width={segments.width}
+    data-image-height={segments.height}
+  >
+    <defs>
+      {segments.subjects.map((subject) => (
+        <filter id={`photo-liquid-${subject.id}`} x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed={subject.id === 'kien' ? 3 : 7} result="ripple" />
+          <feDisplacementMap in="SourceGraphic" in2="ripple" scale="0" xChannelSelector="R" yChannelSelector="G">
+            <animate data-subject-ripple={subject.id} attributeName="scale" values="0;12;4;0" keyTimes="0;0.34;0.68;1" dur="0.5s" calcMode="spline" keySplines="0.2 0.8 0.2 1;0.2 0.8 0.2 1;0.2 0.8 0.2 1" begin="indefinite" />
+          </feDisplacementMap>
+        </filter>
+      ))}
+    </defs>
+    {segments.subjects.map((subject) => (
+      <path class="subject-highlight" d={subject.path} fill-rule="evenodd" vector-effect="non-scaling-stroke"
+        filter={`url(#photo-liquid-${subject.id})`} data-subject-highlight={subject.id} aria-hidden="true" />
+    ))}
+    {segments.subjects.map((subject) => (
+      <path
+        class="subject-trigger"
+        d={subject.path}
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        vector-effect="non-scaling-stroke"
+        role="button"
+        tabindex="0"
+        focusable="true"
+        aria-label={`About ${subject.label}`}
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls={`photo-subject-${subject.id}`}
+        data-subject-trigger
+        data-subject={subject.id}
+        data-anchor-x={subject.anchor.x}
+        data-anchor-y={subject.anchor.y}
+        data-bounds-x={subject.bounds.x}
+        data-bounds-y={subject.bounds.y}
+        data-bounds-width={subject.bounds.width}
+        data-bounds-height={subject.bounds.height}
+      />
+    ))}
+  </svg>
+  <figcaption id="photo-subject-instructions" class="sr-only">
+    Hover, focus, or tap Kien or Blue Jay to learn more. Press Escape to close their details.
+  </figcaption>
+
+  {segments.subjects.map((subject) => (
+    <section
+      id={`photo-subject-${subject.id}`}
+      class="subject-popover"
+      popover="manual"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={`photo-subject-${subject.id}-heading`}
+      aria-describedby={subject.id === 'kien' ? undefined : `photo-subject-${subject.id}-description`}
+    >
+      <svg class="subject-liquid-surface" aria-hidden="true">
+        <path data-liquid-skin />
+      </svg>
+      <div class="subject-content">
+      <h2 id={`photo-subject-${subject.id}-heading`}>{subject.id === 'kien' ? 'Kien' : 'Blue Jay'}</h2>
+      {subject.id !== 'kien' && (
+        <p id={`photo-subject-${subject.id}-description`}>
+          Jay, the Johns Hopkins University mascot.
+        </p>
+      )}
+      {subject.id === 'kien' && (
+        <ul class="contact-links" aria-label="Find Kien online">
+          <li>
+            <a href="https://www.linkedin.com/in/duckienle/">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854zm4.943 12.248V6.169H2.542v7.225zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248S2.4 3.226 2.4 3.934c0 .694.521 1.248 1.327 1.248zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016l.016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225z" />
+              </svg>
+              <span>in/duckienle<span class="sr-only"> on LinkedIn</span></span>
+            </a>
+          </li>
+          <li>
+            <a href="https://github.com/kiendle">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8" />
+              </svg>
+              <span>@kiendle<span class="sr-only"> on GitHub</span></span>
+            </a>
+          </li>
+          <li>
+            <a href="https://x.com/kiendlee">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z" />
+              </svg>
+              <span>@kiendlee<span class="sr-only"> on X</span></span>
+            </a>
+          </li>
+        </ul>
+      )}
+      <button class="subject-close" type="button" aria-label={`Close ${subject.label} details`} data-subject-close>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+          <path d="m4 4 8 8m0-8-8 8" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
+        </svg>
+      </button>
+      </div>
+    </section>
+  ))}
+</figure>
+
+<script>
+  type Interaction = 'pointer' | 'keyboard' | 'touch';
+  type Point = { x: number; y: number };
+  type Subject = {
+    trigger: SVGPathElement;
+    popup: HTMLElement;
+    content: HTMLElement;
+    skin: SVGPathElement;
+    highlight: SVGPathElement;
+    ripple: SVGAnimationElement;
+    motion: Animation[];
+    transition: number;
+    anchor: Point;
+  };
+
+  const initializeSegmentedPhoto = (photo: HTMLElement) => {
+    const overlay = photo.querySelector<SVGSVGElement>('.subject-overlay');
+    const image = photo.querySelector<HTMLImageElement>('.campus-photo');
+    if (!overlay || !image || !('showPopover' in HTMLElement.prototype) || photo.hasAttribute('data-segments-ready')) return;
+
+    const controller = new AbortController();
+    const { signal } = controller;
+    const subjects: Subject[] = [...photo.querySelectorAll<SVGPathElement>('[data-subject-trigger]')].map((trigger) => ({
+      trigger,
+      popup: photo.querySelector<HTMLElement>(`#${trigger.getAttribute('aria-controls')}`)!,
+      content: photo.querySelector<HTMLElement>(`#${trigger.getAttribute('aria-controls')} .subject-content`)!,
+      skin: photo.querySelector<SVGPathElement>(`#${trigger.getAttribute('aria-controls')} [data-liquid-skin]`)!,
+      highlight: photo.querySelector<SVGPathElement>(`[data-subject-highlight="${trigger.dataset.subject}"]`)!,
+      ripple: photo.querySelector<SVGAnimationElement>(`[data-subject-ripple="${trigger.dataset.subject}"]`)!,
+      motion: [],
+      transition: 0,
+      anchor: { x: Number(trigger.dataset.anchorX), y: Number(trigger.dataset.anchorY) },
+    }));
+
+    let active: Subject | null = null;
+    let interaction: Interaction = 'keyboard';
+    let lastInput: Interaction = 'keyboard';
+    let hoveredSubject: Subject | null = null;
+    let hoveredPopup: Subject | null = null;
+    let pointerExit: Point | null = null;
+    let closeTimer: number | undefined;
+    let positionFrame = 0;
+    let suppressFocus = false;
+    const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+
+    const screenAnchor = (subject: Subject) => new DOMPoint(subject.anchor.x, subject.anchor.y)
+      .matrixTransform(overlay.getScreenCTM()!);
+
+    const liquidContour = (x: number, y: number, w: number, h: number, r: number, anchor: number, pull = 0, neck = 8, bulge = 0) => {
+      const right = x + w;
+      const bottom = y + h;
+      const corner = r * .55228475;
+      return `M ${x + r} ${y}
+        C ${x + w * .4} ${y - bulge} ${x + w * .6} ${y - bulge} ${right - r} ${y}
+        C ${right - r + corner} ${y} ${right} ${y + r - corner} ${right} ${y + r}
+        C ${right + bulge} ${y + h * .4} ${right + bulge} ${y + h * .6} ${right} ${bottom - r}
+        C ${right} ${bottom - r + corner} ${right - r + corner} ${bottom} ${right - r} ${bottom}
+        C ${right - r} ${bottom} ${anchor + neck} ${bottom} ${anchor + neck} ${bottom + pull * .45}
+        C ${anchor + neck} ${bottom + pull * .8} ${anchor + neck / 2} ${bottom + pull} ${anchor} ${bottom + pull}
+        C ${anchor - neck / 2} ${bottom + pull} ${anchor - neck} ${bottom + pull * .8} ${anchor - neck} ${bottom + pull * .45}
+        C ${anchor - neck} ${bottom} ${x + r} ${bottom} ${x + r} ${bottom}
+        C ${x + r - corner} ${bottom} ${x} ${bottom - r + corner} ${x} ${bottom - r}
+        C ${x - bulge} ${y + h * .6} ${x - bulge} ${y + h * .4} ${x} ${y + r}
+        C ${x} ${y + r - corner} ${x + r - corner} ${y} ${x + r} ${y} Z`;
+    };
+
+    const popupGeometry = (subject: Subject) => {
+      const box = subject.popup.getBoundingClientRect();
+      const anchorPoint = screenAnchor(subject);
+      const sourceX = anchorPoint.x - box.left;
+      const source = anchorPoint.y - box.top;
+      const anchor = Math.max(20, Math.min(box.width - 20, sourceX));
+      subject.skin.ownerSVGElement!.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+      const rest = liquidContour(0, 0, box.width, box.height, 12, anchor);
+      subject.skin.setAttribute('d', rest);
+      return { w: box.width, h: box.height, anchor, source, rest };
+    };
+
+    const animatePopup = async (subject: Subject, opening: boolean) => {
+      const current = subject.motion.length ? getComputedStyle(subject.skin).d : null;
+      subject.motion.forEach(animation => animation.cancel());
+      subject.motion = [];
+      const token = ++subject.transition;
+      const { w, h, anchor, source, rest } = popupGeometry(subject);
+      if (!motionPreference.matches) subject.ripple.beginElement();
+      if (motionPreference.matches) {
+        subject.popup.removeAttribute('data-liquid-moving');
+        return true;
+      }
+      const gap = Math.max(0, source - h);
+      const poses = [
+        { offset: 0, d: liquidContour(anchor - 12, source - 12, 24, 24, 12, anchor, 0, 4) },
+        { offset: .22, d: liquidContour(anchor - 40, h * .58, 80, h * .4, 32, anchor, gap + 9, 12, 3) },
+        { offset: .46, d: liquidContour(3, -3, w - 6, h - 8, 26, anchor, gap + 22, 10, 4) },
+        { offset: .62, d: liquidContour(-2, -5, w + 4, h + 3, 18, anchor, gap * .5, 4, -1) },
+        { offset: .8, d: liquidContour(1, 2, w - 2, h - 2, 14, anchor, 0, 8, 1) },
+        { offset: 1, d: rest },
+      ];
+      const sequence = opening ? poses : poses.toReversed().map(pose => ({ ...pose, offset: 1 - pose.offset }));
+      const frames = sequence.map(pose => ({
+        offset: pose.offset, d: `path("${pose.d.replace(/\s+/g, ' ')}")`, easing: 'cubic-bezier(.35,0,.2,1)',
+      }));
+      if (current) frames[0].d = current;
+      subject.popup.setAttribute('data-liquid-moving', '');
+      const shape = subject.skin.animate(frames, { duration: opening ? 500 : 320, fill: 'both' });
+      const content = subject.content.animate(opening
+        ? [{ opacity: 0, filter: 'blur(2px)' }, { opacity: 1, filter: 'blur(0)' }]
+        : [{ opacity: getComputedStyle(subject.content).opacity, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(2px)' }],
+      { duration: opening ? 160 : 90, delay: opening ? 205 : 0, fill: 'both', easing: 'ease-out' });
+      subject.motion = [shape, content];
+      try { await shape.finished; } catch { return false; }
+      if (subject.transition !== token) return false;
+      subject.motion.forEach(animation => animation.cancel());
+      subject.motion = [];
+      subject.popup.removeAttribute('data-liquid-moving');
+      popupGeometry(subject);
+      return true;
+    };
+
+    const cancelClose = () => {
+      window.clearTimeout(closeTimer);
+      closeTimer = undefined;
+    };
+
+    const hasKeyboardFocus = () => active && interaction === 'keyboard'
+      && (document.activeElement === active.trigger || active.popup.contains(document.activeElement));
+
+    const close = (restoreFocus = false, immediate = false) => {
+      cancelClose();
+      pointerExit = null;
+      const previous = active ?? (immediate ? subjects.find(subject => subject.popup.matches(':popover-open')) ?? null : null);
+      active = null;
+      if (!previous) return;
+      if (hoveredSubject === previous) hoveredSubject = null;
+      if (hoveredPopup === previous) hoveredPopup = null;
+      previous.trigger.removeAttribute('data-active');
+      previous.trigger.setAttribute('aria-expanded', 'false');
+      previous.highlight.removeAttribute('data-active');
+      suppressFocus = true;
+      previous.popup.inert = true;
+      if (previous.popup.matches(':popover-open')) {
+        if (immediate) {
+          previous.transition++;
+          previous.motion.forEach(animation => animation.cancel());
+          previous.motion = [];
+          previous.popup.removeAttribute('data-liquid-moving');
+          previous.popup.hidePopover();
+        } else {
+          void animatePopup(previous, false).then(finished => {
+            if (!finished || active === previous || !previous.popup.matches(':popover-open')) return;
+            suppressFocus = true;
+            previous.popup.hidePopover();
+            suppressFocus = false;
+          });
+        }
+      }
+      if (restoreFocus) previous.trigger.focus({ preventScroll: true });
+      suppressFocus = false;
+    };
+
+    const position = () => {
+      if (!active) return;
+      const bounds = active.trigger.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const viewportLeft = viewport?.offsetLeft ?? 0;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportWidth = viewport?.width ?? document.documentElement.clientWidth;
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      if (bounds.right < viewportLeft
+        || bounds.left > viewportLeft + viewportWidth
+        || bounds.bottom < viewportTop
+        || bounds.top > viewportTop + viewportHeight) {
+        close();
+        return;
+      }
+      const popup = active.popup;
+      popup.style.maxWidth = `${Math.max(0, viewportWidth - 24)}px`;
+      popup.style.maxHeight = `${Math.max(0, viewportHeight - 24)}px`;
+      const card = popup.getBoundingClientRect();
+      const anchor = screenAnchor(active);
+      const left = Math.max(viewportLeft + 12, Math.min(anchor.x - card.width / 2, viewportLeft + viewportWidth - card.width - 12));
+      const top = Math.max(viewportTop + 12, Math.min(anchor.y - card.height - 10, viewportTop + viewportHeight - card.height - 12));
+      popup.style.left = `${left + window.scrollX}px`;
+      popup.style.top = `${top + window.scrollY}px`;
+      if (!active.motion.length) popupGeometry(active);
+    };
+
+    const schedulePosition = () => {
+      if (!active || positionFrame) return;
+      positionFrame = window.requestAnimationFrame(() => {
+        positionFrame = 0;
+        position();
+      });
+    };
+
+    const open = (subject: Subject, source: Interaction) => {
+      cancelClose();
+      pointerExit = null;
+      const opening = active !== subject;
+      if (opening) {
+        close(false, true);
+        for (const other of subjects) {
+          if (other === subject || !other.popup.matches(':popover-open')) continue;
+          other.transition++;
+          other.motion.forEach(animation => animation.cancel());
+          other.motion = [];
+          other.popup.removeAttribute('data-liquid-moving');
+          suppressFocus = true;
+          other.popup.hidePopover();
+          suppressFocus = false;
+        }
+      }
+      active = subject;
+      interaction = source;
+      subject.trigger.setAttribute('data-active', '');
+      subject.highlight.setAttribute('data-active', '');
+      subject.trigger.setAttribute('aria-expanded', 'true');
+      subject.popup.inert = false;
+      if (!subject.popup.matches(':popover-open')) subject.popup.showPopover();
+      position();
+      if (opening && active === subject) void animatePopup(subject, true);
+    };
+
+    const scheduleClose = () => {
+      cancelClose();
+      if (!active || interaction === 'touch' || hasKeyboardFocus()
+        || hoveredSubject === active || hoveredPopup === active) return;
+      closeTimer = window.setTimeout(() => {
+        closeTimer = undefined;
+        if (active && interaction !== 'touch' && !hasKeyboardFocus()
+          && hoveredSubject !== active && hoveredPopup !== active) close();
+      }, 140);
+    };
+
+    const inTriangle = (point: Point, a: Point, b: Point, c: Point) => {
+      const cross = (p: Point, q: Point, r: Point) => (p.x - r.x) * (q.y - r.y) - (q.x - r.x) * (p.y - r.y);
+      const first = cross(point, a, b);
+      const second = cross(point, b, c);
+      const third = cross(point, c, a);
+      return !((first < 0 || second < 0 || third < 0) && (first > 0 || second > 0 || third > 0));
+    };
+
+    subjects.forEach((subject, index) => {
+      const { trigger, popup } = subject;
+      const links = [...popup.querySelectorAll<HTMLElement>('a[href], button')];
+
+      trigger.addEventListener('pointerenter', (event) => {
+        if (event.pointerType !== 'mouse') return;
+        hoveredSubject = subject;
+        open(subject, 'pointer');
+      }, { signal });
+      trigger.addEventListener('pointerleave', (event) => {
+        if (event.pointerType !== 'mouse') return;
+        if (hoveredSubject === subject) hoveredSubject = null;
+        if (active !== subject || interaction !== 'pointer') return;
+        pointerExit = { x: event.clientX, y: event.clientY };
+        scheduleClose();
+      }, { signal });
+      trigger.addEventListener('focus', () => {
+        if (!suppressFocus && lastInput === 'keyboard') open(subject, 'keyboard');
+      }, { signal });
+      trigger.addEventListener('click', () => {
+        open(subject, lastInput === 'touch' ? 'touch' : lastInput);
+      }, { signal });
+      trigger.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          open(subject, 'keyboard');
+          links[0]?.focus({ preventScroll: true });
+        } else if (event.key === 'Tab' && !event.shiftKey && active === subject) {
+          event.preventDefault();
+          links[0]?.focus({ preventScroll: true });
+        }
+      }, { signal });
+      popup.addEventListener('pointerenter', (event) => {
+        if (event.pointerType !== 'mouse') return;
+        hoveredPopup = subject;
+        pointerExit = null;
+        cancelClose();
+      }, { signal });
+      popup.addEventListener('pointerleave', (event) => {
+        if (event.pointerType !== 'mouse') return;
+        if (hoveredPopup === subject) hoveredPopup = null;
+        pointerExit = null;
+        scheduleClose();
+      }, { signal });
+      popup.addEventListener('keydown', (event) => {
+        if (event.key !== 'Tab') return;
+        if (event.shiftKey && document.activeElement === links[0]) {
+          event.preventDefault();
+          trigger.focus({ preventScroll: true });
+        } else if (!event.shiftKey && document.activeElement === links.at(-1) && subjects[index + 1]) {
+          event.preventDefault();
+          subjects[index + 1].trigger.focus({ preventScroll: true });
+        }
+      }, { signal });
+      popup.querySelector<HTMLButtonElement>('[data-subject-close]')?.addEventListener('click', () => {
+        close(interaction === 'keyboard');
+      }, { signal });
+      const onFocusOut = () => queueMicrotask(() => {
+        if (active === subject) scheduleClose();
+      });
+      trigger.addEventListener('blur', onFocusOut, { signal });
+      popup.addEventListener('focusout', onFocusOut, { signal });
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      lastInput = event.pointerType === 'touch' ? 'touch' : 'pointer';
+      if (!active) return;
+      interaction = lastInput;
+      if (event.target instanceof Node && event.target !== active.trigger && !active.popup.contains(event.target)) close();
+    }, { capture: true, signal });
+    document.addEventListener('keydown', (event) => {
+      lastInput = 'keyboard';
+      if (!active) return;
+      if (event.target === active.trigger || (event.target instanceof Node && active.popup.contains(event.target))) interaction = 'keyboard';
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      const restore = interaction === 'keyboard' && active.popup.contains(document.activeElement);
+      close(restore);
+    }, { capture: true, signal });
+    document.addEventListener('pointermove', (event) => {
+      if (!active || !pointerExit || interaction !== 'pointer') return;
+      // Keep the card open while the pointer crosses the gap toward it, not the surrounding photo.
+      const card = active.popup.getBoundingClientRect();
+      const corners = [
+        { x: card.left - 6, y: card.top - 6 },
+        { x: card.right + 6, y: card.top - 6 },
+        { x: card.right + 6, y: card.bottom + 6 },
+        { x: card.left - 6, y: card.bottom + 6 },
+      ];
+      const point = { x: event.clientX, y: event.clientY };
+      const towardPopup = corners.some((corner, index) => inTriangle(point, pointerExit!, corner, corners[(index + 1) % 4]));
+      if (!towardPopup) pointerExit = null;
+      scheduleClose();
+    }, { signal });
+
+    const observer = new ResizeObserver(schedulePosition);
+    observer.observe(image);
+    subjects.forEach(({ popup }) => observer.observe(popup));
+    window.addEventListener('resize', schedulePosition, { signal });
+    window.addEventListener('scroll', schedulePosition, { capture: true, passive: true, signal });
+    window.visualViewport?.addEventListener('resize', schedulePosition, { signal });
+    window.visualViewport?.addEventListener('scroll', schedulePosition, { signal });
+    motionPreference.addEventListener('change', () => {
+      if (!motionPreference.matches) return;
+      subjects.forEach(subject => {
+        subject.transition++;
+        subject.motion.forEach(animation => animation.cancel());
+        subject.motion = [];
+        subject.ripple.endElement();
+        subject.popup.removeAttribute('data-liquid-moving');
+        if (subject === active) popupGeometry(subject);
+        else if (subject.popup.matches(':popover-open')) {
+          suppressFocus = true;
+          subject.popup.hidePopover();
+          suppressFocus = false;
+        }
+      });
+    }, { signal });
+    document.addEventListener('astro:before-swap', () => {
+      controller.abort();
+      observer.disconnect();
+      window.cancelAnimationFrame(positionFrame);
+      close(false, true);
+      photo.removeAttribute('data-segments-ready');
+    }, { once: true, signal });
+    photo.setAttribute('data-segments-ready', '');
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-segmented-photo]').forEach(initializeSegmentedPhoto);
+</script>
+
+<style>
+  .segmented-photo {
+    position: relative;
+  }
+
+  .subject-overlay {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 12px;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .segmented-photo[data-segments-ready] .subject-overlay {
+    visibility: visible;
+  }
+
+  .subject-trigger {
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 1.5px;
+    pointer-events: fill;
+    cursor: var(--cursor-pointer, pointer);
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .subject-highlight {
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 1.5px;
+    pointer-events: none;
+    transition: fill 160ms ease, stroke 160ms ease;
+  }
+
+  .subject-highlight[data-active][data-subject-highlight='kien'] {
+    fill: rgb(220 134 255 / 24%);
+    stroke: #dc86ff;
+  }
+
+  .subject-highlight[data-active][data-subject-highlight='bluejay'] {
+    fill: rgb(215 66 18 / 19%);
+    stroke: #d74212;
+  }
+
+  .subject-popover {
+    position: absolute;
+    inset: auto;
+    z-index: 40;
+    width: 280px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+    font: inherit;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .subject-liquid-surface {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 12px rgb(41 41 37 / 10%));
+  }
+
+  .subject-liquid-surface path {
+    fill: #fff;
+    stroke: var(--line);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .subject-content {
+    position: relative;
+    box-sizing: border-box;
+    max-height: inherit;
+    padding: 19px 21px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border-radius: inherit;
+  }
+
+  .subject-popover[inert] .subject-content { pointer-events: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .subject-highlight { transition: none; filter: none; }
+  }
+
+  .subject-popover::backdrop {
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .subject-popover h2 {
+    margin: 0 30px 5px 0;
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.3;
+    letter-spacing: -0.025em;
+  }
+
+  .subject-popover p {
+    margin: 0;
+    padding-right: 8px;
+    color: #73736b;
+  }
+
+  .subject-popover .contact-links {
+    margin-top: 10px;
+  }
+
+  .subject-popover .contact-links a {
+    min-height: 32px;
+  }
+
+  .subject-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #85857d;
+    cursor: var(--cursor-pointer, pointer);
+  }
+
+  .subject-close:hover,
+  .subject-close:focus-visible {
+    background: #f4f4f1;
+    color: var(--ink);
+  }
+</style>

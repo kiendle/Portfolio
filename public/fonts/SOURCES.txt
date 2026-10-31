@@ -1,0 +1,21 @@
+Self-hosted typefaces
+Retrieved 2026-10-31. Font binaries are unmodified upstream WOFF2 files; local filenames are normalized for the website.
+
+Getai Grotesk Display Black
+Designer: Sylvester Tan; publisher: Death of Typography (DOT).
+Requested listing: https://bestfreefonts.com/getai-grotesk
+Official typeface: https://deathoftypography.com/getai-grotesk-display/
+Official stylesheet: https://deathoftypography.com/wp-content/uploads/useanyfont/uaf.css?ver=1680441961
+Binary: https://deathoftypography.com/wp-content/uploads/useanyfont/2753DT-Getai.woff2
+Local file: getai-grotesk.woff2
+License: SIL Open Font License 1.1; getai-grotesk-OFL.txt is the unmodified "DT Getai Grotesk/LICENSE OFL .txt" extracted from the publisher's original distribution: https://deathoftypography.com/wp-content/uploads/woocommerce_uploads/2023/05/DT-Getai-Grotesk-20220614T031232Z-001-lewipy.zip
+Publisher's license statement: https://deathoftypography.com/open-source-font-license/
+
+Absans Regular
+Designer: Valerio Monopoli; publisher: Collletttivo.
+Requested listing: https://bestfreefonts.com/absans
+Official typeface: https://www.collletttivo.it/typefaces/absans
+Official source: https://github.com/collletttivo/absans
+Binary: https://raw.githubusercontent.com/collletttivo/absans/main/fonts/Absans-Regular.woff2
+Local file: absans.woff2
+License: SIL Open Font License 1.1; absans-OFL.txt is the unmodified upstream LICENSE.txt from https://raw.githubusercontent.com/collletttivo/absans/main/LICENSE.txt.

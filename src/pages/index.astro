@@ -1,0 +1,82 @@
+---
+import TokenHeatmap from '../components/TokenHeatmap.astro';
+import ProgressiveBlur from '../components/ProgressiveBlur.astro';
+import PageReveal from '../components/PageReveal.astro';
+import SegmentedPhoto from '../components/SegmentedPhoto.astro';
+import LiquidLinkCursor from '../components/LiquidLinkCursor.astro';
+import apps from '../data/apps.json';
+import '../styles/global.css';
+
+const heroes = [
+  { firstName: 'Thuan', lastName: 'Pham', href: 'https://www.linkedin.com/in/thuanqpham/', photo: '/people/thuan-pham.jpg' },
+  { firstName: 'Matt', lastName: 'Pocock', href: 'https://www.mattpocock.com/', photo: '/people/matt-pocock.jpg' },
+  { firstName: 'Gergely', lastName: 'Orosz', href: 'https://www.pragmaticengineer.com/', photo: '/people/gergely-orosz.jpg' },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Kien — personal website</title>
+    <meta
+      name="description"
+      content="Kien’s personal corner of the internet: token usage, tools I’m playing with, and my heroes."
+    />
+    <link rel="canonical" href="https://kienle.work/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23fff'/%3E%3Cpath d='M9 7v18m14-18L10 18m4-4 10 11' fill='none' stroke='%2320201e' stroke-width='3.5' stroke-linejoin='round'/%3E%3C/svg%3E"
+    />
+    <link rel="preload" href="/fonts/absans.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/getai-grotesk.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <main id="main" class="notebook">
+      <section class="intro" aria-label="Introduction">
+        <div class="intro-copy">
+          <p class="greeting">Hello, it’s</p>
+          <h1 class="name-word">Kien</h1>
+        </div>
+        <SegmentedPhoto />
+      </section>
+
+      <TokenHeatmap />
+
+      <section class="apps-section" aria-labelledby="apps-heading">
+        <h2 id="apps-heading">I’m playing around with...</h2>
+        <ul class="app-list">
+          {apps.map((app) => (
+            <li>
+              <a class="app-card" href={app.href} aria-label={app.name} title={app.name}>
+                <img src={app.src} alt="" width="42" height="42" loading="lazy" decoding="async" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="heroes-section" aria-labelledby="heroes-heading">
+        <h2 id="heroes-heading">My heroes</h2>
+        <ul class="hero-list">
+          {heroes.map((hero) => (
+            <li>
+              <a class="hero-card" href={hero.href}>
+                <img class="hero-photo" src={hero.photo} width="48" height="48" loading="lazy" decoding="async" alt="" />
+                <span class="hero-name"><span>{hero.firstName}</span><span>{hero.lastName}</span></span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </main>
+
+    <LiquidLinkCursor />
+    <ProgressiveBlur />
+    <PageReveal />
+  </body>
+</html>
