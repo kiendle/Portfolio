@@ -54,7 +54,7 @@ const { intro = false } = Astro.props;
   .aurora-border--intro {
     z-index: 1;
     opacity: 0;
-    animation: photo-aura-turn 1.2s linear 900ms 2.5, photo-aura-arrive 3s ease 900ms both;
+    animation: photo-aura-turn 1.2s linear 900ms 2.5, photo-aura-arrive 3s ease-in-out 900ms both;
   }
 
   @keyframes photo-aura-turn {
@@ -63,7 +63,7 @@ const { intro = false } = Astro.props;
 
   @keyframes photo-aura-arrive {
     0%, 100% { opacity: 0; visibility: hidden; }
-    12%, 78% { opacity: 1; visibility: visible; }
+    40%, 78% { opacity: 1; visibility: visible; }
   }
 
   @media (prefers-reduced-motion: reduce), (forced-colors: active) {
