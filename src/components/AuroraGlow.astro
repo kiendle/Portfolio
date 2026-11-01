@@ -1,0 +1,232 @@
+---
+import AuroraBorder from './AuroraBorder.astro';
+const palettes = [
+  { name: 'Spectrum', colors: ['#ff60ef', '#ff8a00', '#fff000', '#00e5e5'] },
+  { name: 'Ocean', colors: ['#36ffb4', '#00e5c8', '#009dff', '#00c8ee'] },
+  { name: 'Neon', colors: ['#ff55ed', '#b278ff', '#00dce8', '#3695ff'] },
+];
+---
+
+<aurora-glow data-active="false" data-palette="spectrum">
+  <div class="aura" aria-hidden="true">
+    <div class="aura-ambient"></div>
+    <div class="aura-bloom"></div>
+    <AuroraBorder />
+  </div>
+  <div class="controller">
+    <div class="palettes" role="group" aria-label="Aurora palette">
+      {palettes.map(({ name, colors }) => (
+        <button type="button" data-palette={name.toLowerCase()} aria-pressed="false">
+          <span class="swatches" aria-hidden="true">
+            {colors.map((color) => <span style={{ background: color }}></span>)}
+          </span>
+          <span>{name}</span>
+        </button>
+      ))}
+    </div>
+    <p role="status">Pick a palette to run the aura</p>
+  </div>
+</aurora-glow>
+
+
+<style>
+  aurora-glow {
+    transition: --aura-one 250ms, --aura-two 250ms, --aura-three 250ms, --aura-four 250ms;
+    position: fixed;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+    isolation: isolate;
+    background: #141210;
+    color: #aaa5a2;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  aurora-glow[data-palette='ocean'] {
+    --aura-one: #36ffb4;
+    --aura-two: #00e5c8;
+    --aura-three: #009dff;
+    --aura-four: #00c8ee;
+  }
+
+  aurora-glow[data-palette='neon'] {
+    --aura-one: #ff55ed;
+    --aura-two: #b278ff;
+    --aura-three: #00dce8;
+    --aura-four: #3695ff;
+  }
+
+  .aura {
+    --aura-gradient: conic-gradient(from var(--aura-angle), var(--aura-one), var(--aura-two), var(--aura-three), var(--aura-four), var(--aura-one));
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 350ms ease;
+    animation: aura-turn 1.2s linear infinite paused;
+  }
+
+  [data-active='true'] .aura {
+    opacity: 1;
+    animation-play-state: running;
+  }
+
+  .aura-ambient,
+  .aura-bloom {
+    position: absolute;
+    background: var(--aura-gradient);
+  }
+
+  .aura-ambient {
+    inset: -80px;
+    opacity: 0.035;
+    filter: blur(60px);
+  }
+
+  .aura-bloom {
+    inset: -80px;
+    opacity: 0;
+    filter: blur(60px);
+    mask-image: radial-gradient(ellipse closest-side, #000 10%, transparent 100%);
+  }
+
+
+  .controller {
+    position: absolute;
+    top: calc(50% + 2px);
+    left: 50%;
+    width: max-content;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .palettes {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    border-radius: 15px;
+    transition: background 250ms ease, box-shadow 250ms ease;
+  }
+
+  [data-active='true'] .palettes {
+    background: #171411;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 25%);
+  }
+
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 66px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: #1c1917;
+    color: #aaa5a2;
+    font: inherit;
+    font-size: 9px;
+    line-height: 10px;
+    letter-spacing: 0.1px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 200ms ease, color 200ms ease;
+  }
+
+  button:hover,
+  button[aria-pressed='true'] {
+    background: #302a26;
+    color: #e6e0dc;
+  }
+
+  button:focus-visible {
+    outline: 1px solid #e6e0dc;
+    outline-offset: 3px;
+  }
+
+  .swatches {
+    display: flex;
+    gap: 2px;
+  }
+
+  .swatches span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  p {
+    margin: 8px 0 0;
+    color: #928d89;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 14px;
+    letter-spacing: 0.1px;
+  }
+
+  @keyframes aura-turn {
+    to { --aura-angle: 180deg; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .aura { animation: none; transition: none; }
+    aurora-glow, .palettes, button { transition: none; }
+  }
+
+  @media (forced-colors: active) {
+    .aura { display: none; }
+    button { border: 1px solid ButtonText; }
+    button[aria-pressed='true'] { outline: 2px solid Highlight; }
+  }
+</style>
+
+<script>
+  class AuroraGlow extends HTMLElement {
+    connectedCallback() {
+      const buttons = this.querySelectorAll<HTMLButtonElement>('button[data-palette]');
+      const hint = this.querySelector<HTMLElement>('[role="status"]')!;
+      const bloom = this.querySelector<HTMLElement>('.aura-bloom')!;
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      let pulse: Animation | undefined;
+
+      const dismiss = () => {
+        this.dataset.active = 'false';
+        buttons.forEach((button) => button.setAttribute('aria-pressed', 'false'));
+        hint.textContent = 'Pick a palette to run the aura';
+        pulse?.cancel();
+      };
+
+      this.addEventListener('click', (event) => {
+        const button = (event.target as Element).closest<HTMLButtonElement>('button[data-palette]');
+        if (!button) {
+          dismiss();
+          return;
+        }
+
+        this.dataset.palette = button.dataset.palette;
+        this.dataset.active = 'true';
+        buttons.forEach((candidate) => candidate.setAttribute('aria-pressed', String(candidate === button)));
+        hint.textContent = 'Click anywhere to dismiss';
+        pulse?.cancel();
+        if (!reducedMotion.matches) {
+          pulse = bloom.animate(
+            [{ opacity: 0 }, { opacity: 0.12, offset: 0.24 }, { opacity: 0 }],
+            { duration: 1600, easing: 'ease-out' },
+          );
+        }
+      });
+
+      this.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') dismiss();
+      });
+      reducedMotion.addEventListener('change', () => {
+        if (reducedMotion.matches) pulse?.cancel();
+      });
+    }
+  }
+
+  customElements.define('aurora-glow', AuroraGlow);
+</script>

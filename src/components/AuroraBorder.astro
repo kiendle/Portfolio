@@ -1,0 +1,106 @@
+---
+interface Props {
+  intro?: boolean;
+}
+const { intro = false } = Astro.props;
+---
+
+<div class:list={['aurora-border', { 'aurora-border--intro': intro }]} aria-hidden="true">
+  <div class="aura-halo"></div>
+  <div class="aura-edge"></div>
+  <slot />
+</div>
+
+<style is:global>
+  @property --aura-angle {
+    syntax: '<angle>';
+    initial-value: -180deg;
+    inherits: true;
+  }
+  @property --aura-one {
+    syntax: '<color>';
+    initial-value: #ff3cdf;
+    inherits: true;
+  }
+  @property --aura-two {
+    syntax: '<color>';
+    initial-value: #ff6a00;
+    inherits: true;
+  }
+  @property --aura-three {
+    syntax: '<color>';
+    initial-value: #fff000;
+    inherits: true;
+  }
+  @property --aura-four {
+    syntax: '<color>';
+    initial-value: #70e5ff;
+    inherits: true;
+  }
+</style>
+
+<style>
+  .aurora-border {
+    --aura-gradient: conic-gradient(from var(--aura-angle), var(--aura-one), var(--aura-two), var(--aura-three), var(--aura-four), var(--aura-one));
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .aura-edge,
+  .aura-halo {
+    position: absolute;
+    inset: var(--aura-inset, -8px);
+    border-radius: var(--aura-radius, 48px);
+  }
+
+  .aura-edge::before,
+  .aura-halo::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: var(--aura-width, 12px);
+    border-radius: inherit;
+    background: var(--aura-gradient);
+    mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0);
+  }
+
+  .aura-edge {
+    filter: blur(var(--aura-blur, 8px));
+  }
+
+  .aura-halo {
+    opacity: 0.65;
+    filter: blur(var(--aura-halo-blur, 18px));
+  }
+
+  .aura-halo::before {
+    padding: var(--aura-halo-width, 18px);
+  }
+
+
+  .aurora-border--intro {
+    --aura-inset: -3px;
+    --aura-radius: 16px;
+    --aura-width: 5px;
+    --aura-blur: 4px;
+    --aura-halo-width: 10px;
+    --aura-halo-blur: 10px;
+    z-index: 1;
+    opacity: 0;
+    animation: photo-aura-turn 1.2s linear 900ms 2.5, photo-aura-arrive 3s ease 900ms both;
+  }
+
+  @keyframes photo-aura-turn {
+    to { --aura-angle: 180deg; }
+  }
+
+  @keyframes photo-aura-arrive {
+    0%, 100% { opacity: 0; visibility: hidden; }
+    12%, 78% { opacity: 1; visibility: visible; }
+  }
+
+  @media (prefers-reduced-motion: reduce), (forced-colors: active) {
+    .aurora-border--intro { display: none; animation: none; }
+  }
+</style>

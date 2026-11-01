@@ -19,3 +19,11 @@ Official source: https://github.com/collletttivo/absans
 Binary: https://raw.githubusercontent.com/collletttivo/absans/main/fonts/Absans-Regular.woff2
 Local file: absans.woff2
 License: SIL Open Font License 1.1; absans-OFL.txt is the unmodified upstream LICENSE.txt from https://raw.githubusercontent.com/collletttivo/absans/main/LICENSE.txt.
+
+Caveat Regular (Latin)
+Designer: Pablo Impallari and The Caveat Project Authors.
+Official source: https://github.com/googlefonts/caveat
+Stylesheet: https://fonts.googleapis.com/css2?family=Caveat:wght@400&display=swap
+Binary: https://fonts.gstatic.com/s/caveat/v23/WnznHAc5bAfYB2QRah7pcpNvOx-pjfJ9eIWpYT5Kmgq3sw.woff2
+Local file: caveat.woff2
+License: SIL Open Font License 1.1; caveat-OFL.txt is the unmodified upstream license from https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/OFL.txt.

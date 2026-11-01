@@ -22,9 +22,13 @@ App links and hero cards stay in place on hover and keyboard focus, without blur
 
 On initial page load, a CSS-only, page-wide blur wipe clears from top to bottom over one second. Its moving boundary shares the existing bottom edge’s eight blur layers and mask curves, stretched across a softer 320px depth on desktop and 240px at widths of 680px or less. The visible feather uses the first 84% and 80% of those curves, respectively, preserving the transition into the fully blurred region. It does not intercept input or replay on scroll, leaves the existing fixed edge blur unchanged, and is disabled for reduced-motion preferences.
 
-Mouse and trackpad users get a small charcoal dot cursor and an outlined ring over ordinary links and controls, with white edging for contrast over photos. Those native cursors use inline SVG images without extra asset requests. Over app links and hero cards only, `LiquidLinkCursor.astro` morphs into a magnifying glass for apps, or a thin northeast arrow for heroes. The magnifier’s circular lens folds into the arrowhead and its diagonal handle becomes the shaft, rather than crossfading separate icons. The shape yields with pointer motion, compresses on press, and springs back without moving the card or artwork. SVG `d` attribute updates work in both Chromium and WebKit; the animation loop stops once the shape settles. Leaving the links restores the native cursor. Keyboard input, scrolling, blur, reduced motion, coarse pointers, and forced-colors mode dismiss or bypass the overlay. Selectable paragraphs and headings keep the text cursor.
+Mouse and trackpad users get a small charcoal dot cursor and an outlined ring over ordinary links and controls, with white edging for contrast over photos. Those native cursors use inline SVG images without extra asset requests. `LiquidLinkCursor.astro` morphs into a magnifying glass over apps, a thin northeast arrow over heroes, and an open hand over the heatmap scrollbar. The magnifier’s circular lens folds into the arrowhead and its diagonal handle becomes the shaft, rather than crossfading separate icons. The scrollbar cursor interpolates one outline from dot to hand, curls into a grip on press, and relaxes back through the same geometry on release and exit. The shape yields with pointer motion and stops animating once settled. Keyboard input, page scrolling, blur, reduced motion, coarse pointers, and forced-colors mode dismiss or bypass the overlay; scrolling the heatmap during a drag keeps the hand attached to the pointer. Selectable paragraphs and headings keep the text cursor.
 
 Selected text uses a static burgundy (`#800020`) background with white text, rendered by native CSS `::selection` without JavaScript or overlays. Forced-colors mode retains the system highlight colors.
+
+The standalone `/aurora-glow` demo recreates the public [Details.so Aurora Glow video](https://www.details.so/vault/aurora-glow). `AuroraGlow.astro` renders the effect with rotating CSS conic gradients, blurred rounded-edge masks, and a short interior bloom—not a video background. The border uses a continuous rounded gradient and soft halo, without corner-only additive layers that concentrate color or clip the blur into square patches. Spectrum, Ocean, and Neon buttons switch palettes; an outside click/tap or Escape dismisses the aura. Native buttons support keyboard activation, and reduced motion keeps the selected glow static without the bloom.
+
+The homepage photo shares that glow through `AuroraBorder.astro`: its Spectrum border fades in after the opening blur wipe, runs for 3 seconds, and disappears 3.9 seconds after page entry. It runs once per page load, never restarts on hover or scroll, does not tint the photo, and does not intercept its subject interactions. A right-aligned handwritten “Hover over image to see more” hint above the photo shares the glow’s fade container, appearing and disappearing with it; narrower screens reserve a separate line so it does not overlap the name. The hint uses self-hosted Caveat under the SIL Open Font License in `public/fonts/caveat-OFL.txt`. Reduced-motion and forced-colors preferences disable both the introductory glow and hint while retaining the subject controls.
 
 ## Run locally
 
@@ -88,15 +92,17 @@ Coverage is **all history currently available in local records that the installe
 
 The selected year's heatmap runs from January 1 through today (or December 31 for past years), without reserving blank columns for future weeks. Activity uses a saturated green scale shared with the legend. Narrow screens scroll horizontally to the latest day with room for its focus outline; short early-year calendars keep their cells compact.
 
-Day details use a compact, non-interactive label outside the calendar grid. Mouse hover opens it immediately. The same popover stays open across cell gaps while scrubbing, with a soft blur on changing dates that sharpens after 100 ms of rest. Entering and leaving use a 140 ms blur dissolve instead of abrupt show/hide flashes. Keyboard focus and touch taps show the exact count and a short date immediately; Escape dismisses the label. Reduced-motion preferences disable the transitions and scrub blur.
+The heatmap scrollbar has a floating thumb with no visible track or container. Hover, drag stretch, vertical yielding, and release share soft, damped springs rather than abrupt size changes. Thumb position follows every pointer movement directly, preserving fractional-pixel travel independently of the surface animation. Travel past either end is discarded immediately so reversing direction has no dead zone. Reduced motion disables the deformation and hand morph. Native touch/trackpad scrolling stays available, and the focusable scrollbar supports arrow keys, Page Up/Down, Home, and End. It disappears when the calendar fits; without JavaScript, the native scrollbar remains available.
+
+Day details use a compact, non-interactive label outside the calendar grid. Mouse hover opens it immediately. The same popover stays open across cell gaps while scrubbing, with a soft blur on changing dates that sharpens after 100 ms of rest. Entering and leaving use a 140 ms blur dissolve instead of abrupt show/hide flashes. Keyboard focus shows the exact count and a short date immediately. On touchscreens, one tap opens or switches day details after the browser's focus change; swiping still scrolls the calendar without opening a label. Escape or an outside tap dismisses the label. Reduced-motion preferences disable the transitions and scrub blur.
 
 The selected-year token total is bold green and uses [NumberFlow](https://number-flow.barvian.me/vanilla) to roll digits upward from below once when it enters the viewport, then on subsequent year changes. Horizontal movement is disabled. Reduced-motion preferences disable the animation. The exact total is server-rendered for no-JavaScript viewing and exposed separately to screen readers so rolling digits are not announced. NumberFlow is Copyright (c) 2024 Maxwell Barvian; its MIT notice is preserved in `public/licenses/number-flow-LICENSE.txt` and included in the static build.
 
 The repository snapshot contains real aggregates collected from local records, not fabricated activity. Before the first successful collection, the empty state is `updatedAt: null` and `days: []`. A failed command, invalid report, inconsistent counters, or completely empty report exits with an error and leaves the previous snapshot intact. Successful changes are written to a private temporary file and atomically renamed into place.
 
-### Refresh the actual webpage build
+### Refresh and publish token usage
 
-Collecting alone changes the source JSON, not an existing production build. To collect and then rebuild the static webpage:
+Collecting alone changes the source JSON, not an existing production build. To collect, rebuild the static webpage locally, and publish the sanitized snapshot to the production branch:
 
 ```sh
 node scripts/refresh-usage.mjs
@@ -108,19 +114,28 @@ Or fix the grouping timezone for this run:
 USAGE_TIME_ZONE=UTC node scripts/refresh-usage.mjs
 ```
 
-This runs the collector followed by `npm run build` in this checkout. It rebuilds even if the aggregate snapshot is unchanged. If collection fails, no build is started. If the build fails, the newly collected source snapshot is retained, but `dist/` should not be considered successfully refreshed. `NPM_BIN` can point to an installed npm executable.
+This runs the collector followed by `npm run build` in this checkout, then publishes only sanitized `src/data/usage.json` to the latest `origin/main`. It rebuilds even if the aggregate snapshot is unchanged. If collection fails, no build or publication is started. If the build fails, the newly collected source snapshot is retained and nothing is published, but `dist/` should not be considered successfully refreshed. `NPM_BIN` can point to an installed npm executable.
 
-The collector requests offline/cached pricing behavior with `--offline` and omits costs with `--no-cost`. Refreshing uses preinstalled tools and dependencies; it does not install packages, commit, push, or deploy. When the Mac is offline, locally available usage can still be collected and the local static site rebuilt. Nothing is uploaded by these scripts.
+The collector requests offline/cached pricing behavior with `--offline` and omits costs with `--no-cost`. Refreshing uses preinstalled tools and dependencies; it does not install packages. When the Mac is offline or GitHub authentication is unavailable, collection and the local build can still succeed, but publication fails with a nonzero exit status and retains the local snapshot. Run the refresh again after connectivity or credentials are restored.
+
+For a local-only collection and build, without any GitHub publication:
+
+```sh
+node scripts/collect-usage.mjs
+npm run build
+```
 
 ## Daily macOS refresh: explicit opt-in
 
-Scheduling is not enabled by cloning the project or installing dependencies. First confirm a manual refresh works, keep this checkout at a stable location, and then explicitly install the user LaunchAgent:
+The existing `local.kien-portfolio.usage` job runs daily at **09:00 in the Mac's local wall-clock timezone**, with **America/New_York** usage date grouping. It already invokes `refresh-usage.mjs` without arguments, so its next run collects, builds, and publishes automatically without reinstalling or rescheduling.
+
+Scheduling is not enabled by cloning the project or installing dependencies. For a new installation, first confirm a manual refresh works, keep this checkout at a stable location, and then explicitly install the user LaunchAgent:
 
 ```sh
 node scripts/install-usage-launchd.mjs --install
 ```
 
-By default it runs daily at **09:00 in the Mac's local wall-clock timezone**. The date-grouping timezone is captured from the current system timezone at installation. To choose a different time and a fixed grouping timezone:
+New installations also default to **09:00 in the Mac's local wall-clock timezone**. Their date-grouping timezone is captured from the current system timezone at installation. To choose a different time and a fixed grouping timezone:
 
 ```sh
 node scripts/install-usage-launchd.mjs --install --hour 9 --minute 30 --timezone UTC
@@ -133,9 +148,9 @@ The installer creates:
 - `~/Library/LaunchAgents/local.kien-portfolio.usage.plist`
 - Private logs at `~/Library/Logs/PortfolioUsage/stdout.log` and `stderr.log`
 
-The plist uses `StartCalendarInterval`, absolute resolved Node/npm/ccusage executable paths, the checkout as `WorkingDirectory`, and an explicit `PATH`. Resolving executables avoids depending on an ephemeral fnm multishell symlink. `RunAtLoad` is off, so installation does not immediately collect or build; run `refresh-usage.mjs` manually when an immediate refresh is wanted. This is a logged-in user job, not a system daemon: it cannot refresh while the Mac is shut down or the user is logged out. Missed intervals during sleep are handled by launchd on wake.
+The plist uses `StartCalendarInterval`, absolute resolved Node/npm/ccusage executable paths, the checkout as `WorkingDirectory`, and an explicit `PATH`. New installations also resolve Git and include its directory in `PATH`. Resolving executables avoids depending on an ephemeral fnm multishell symlink. `RunAtLoad` is off, so installation does not immediately collect, build, or publish; run `refresh-usage.mjs` manually when an immediate refresh is wanted. This is a logged-in user job, not a system daemon: it cannot refresh while the Mac is shut down or the user is logged out. Missed intervals during sleep are handled by launchd on wake.
 
-The job captures `HOME`, `PATH`, `CCUSAGE_BIN`, `NPM_BIN`, and `USAGE_TIME_ZONE`, not your shell profile or arbitrary environment variables/secrets. Scheduled and manual refresh builds disable Astro CLI telemetry with `ASTRO_TELEMETRY_DISABLED=1`. If your agent logs use custom locations, make sure the installed CLI's local configuration can discover them in this environment before scheduling. Reinstall after moving the checkout or removing/upgrading the resolved Node or CLI installations. No credentials are needed for local collection/building.
+The job captures `HOME`, `PATH`, `CCUSAGE_BIN`, `NPM_BIN`, and `USAGE_TIME_ZONE`, not your shell profile or arbitrary environment variables/secrets. Publication uses noninteractive Git (`GIT_TERMINAL_PROMPT=0`) and the user's existing Git credential helper/configuration through `HOME`; those credentials must be available in the logged-in Mac session. No GitHub tokens are written into the plist or repository. Scheduled and manual refresh builds disable Astro CLI telemetry with `ASTRO_TELEMETRY_DISABLED=1`. If your agent logs use custom locations, make sure the installed CLI's local configuration can discover them in this environment before scheduling. Reinstall after moving the checkout or removing/upgrading the resolved Node or CLI installations. Local collection and building need no GitHub credentials.
 
 Inspect the installed job:
 
@@ -153,7 +168,7 @@ Uninstalling unloads the job and removes its plist. Existing private logs are re
 
 ## Privacy and deployment
 
-Raw CLI reports stay in process memory and are not written or uploaded by the collector. No prompts, project names, filesystem paths, session identifiers, model lists, model breakdowns, per-agent breakdowns, costs, or CLI metadata are copied into the snapshot. Only the allowlisted date/count fields and snapshot metadata above are saved. The aggregate still reveals daily activity patterns; review it before choosing to publish the repository or generated site. Build and error logs remain local, outside the repository when scheduled.
+Raw CLI reports stay in process memory and are not written or uploaded by the collector. No prompts, project names, filesystem paths, session identifiers, model lists, model breakdowns, per-agent breakdowns, costs, or CLI metadata are copied into the snapshot. Only the allowlisted date/count fields and snapshot metadata above are saved, and the publisher independently projects that allowlist before committing. The published aggregate still reveals daily activity patterns. Build and error logs remain local, outside the repository when scheduled.
 
 Vercel hosts the site as `kiens-projects-656209eb/kien-portfolio`, connected to the private GitHub repository `kiendle/Portfolio`. Pushes to `main` create production deployments; pushes to other branches and pull requests create preview deployments. Vercel uses Node.js 24, `npm ci`, `npm run build`, and the static `dist/` output. No server adapter or separate GitHub Actions deployment workflow is required.
 
@@ -161,4 +176,6 @@ Vercel's default deployment protection stays enabled for `.vercel.app` URLs; the
 
 The production domain is `https://www.kienle.work`; `https://kienle.work` redirects to it with HTTP 307, preserving the previous site's routing. Astro's `site` setting supplies the canonical URL. Vercel project metadata and local environment files are ignored and must not be committed.
 
-**A local daily build is not a hosted-site deployment.** The existing daily refresh still only collects sanitized usage aggregates and rebuilds local `dist/`; it does not commit or push. To publish refreshed token counts, explicitly commit `src/data/usage.json` and push the change to `main`. Vercel then rebuilds and publishes the updated snapshot.
+After a successful local refresh build, publication creates a commit based on the latest remote `origin/main`, changing only canonical, sanitized `src/data/usage.json`. Vercel's native Git integration then rebuilds and deploys production; no direct Vercel upload is used. If the remote snapshot already has identical bytes, no commit or push is made and no new deployment is triggered.
+
+Publication uses a private temporary Git ref and index. It does not change the active branch or its HEAD, touch the real Git index, stage/checkout/stash working files, or push the active branch's commits. Unrelated staged and unstaged work stays untouched, and other changes already on remote `main` are preserved. A concurrent update to `main` causes the normal non-force push to fail; there are no automatic retries or force pushes, and the collected local snapshot remains available. The developer branch is not advanced by these usage commits: sync it with the latest `main` before future production pushes.

@@ -4,6 +4,7 @@
       <g id="liquid-link-cursor-shape">
         <path class="cursor-contour" />
         <path class="cursor-shaft" />
+        <path class="cursor-hand" />
       </g>
     </defs>
     <g class="cursor-outline">
@@ -33,6 +34,7 @@
     :global(.hero-card[data-liquid-cursor]),
     :global(.app-card[data-liquid-cursor] *),
     :global(.hero-card[data-liquid-cursor] *) { cursor: none; }
+    :global(html[data-liquid-scroll-cursor] *) { cursor: none !important; }
   }
   @media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce), (forced-colors: active) {
     liquid-link-cursor { display: none; }
@@ -52,17 +54,21 @@
       const forcedColors = matchMedia('(forced-colors: active)');
       const contour = this.querySelector<SVGPathElement>('.cursor-contour')!;
       const shaft = this.querySelector<SVGPathElement>('.cursor-shaft')!;
+      const hand = this.querySelector<SVGPathElement>('.cursor-hand')!;
       const hotspot = this.querySelector<SVGCircleElement>('.cursor-hotspot')!;
       const outline = this.querySelector<SVGGElement>('.cursor-outline')!;
-      const links = [...document.querySelectorAll<HTMLAnchorElement>('.app-card, .hero-card')];
-      const state = { width: 7, height: 7, arrow: 0, widthSpeed: 0, heightSpeed: 0, arrowSpeed: 0 };
-      const goals = { width: 7, height: 7, arrow: 0 };
+      const links = [...document.querySelectorAll<HTMLElement>('.app-card, .hero-card, [data-scroll-thumb]')];
+      const state = { width: 7, height: 7, arrow: 0, hand: 0, grip: 0, widthSpeed: 0, heightSpeed: 0, arrowSpeed: 0, handSpeed: 0, gripSpeed: 0 };
+      const goals = { width: 7, height: 7, arrow: 0, hand: 0, grip: 0 };
       const axes = [
         { value: 'width', speed: 'widthSpeed' },
         { value: 'height', speed: 'heightSpeed' },
         { value: 'arrow', speed: 'arrowSpeed' },
+        { value: 'hand', speed: 'handSpeed' },
+        { value: 'grip', speed: 'gripSpeed' },
       ] as const;
-      let active: HTMLAnchorElement | null = null;
+      let active: HTMLElement | null = null;
+      let handMode = false;
       let pointerX = 0;
       let pointerY = 0;
       let bendX = 0;
@@ -72,8 +78,63 @@
       let previousTime = 0;
       let morph = 0;
       const mix = (lens: number, arrow: number) => lens + (arrow - lens) * morph;
+      const sampleHand = (d: string) => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', d);
+        const length = path.getTotalLength();
+        const points = new Float32Array(128);
+        for (let i = 0; i < 64; i++) {
+          const point = path.getPointAtLength(length * i / 64);
+          points[i * 2] = point.x;
+          points[i * 2 + 1] = point.y;
+        }
+        return points;
+      };
+      const openHand = sampleHand(`M -7 14
+        C -10 11 -10 7 -14 3 C -18 -1 -17 -5 -14 -4 C -12 -3 -10 0 -9 0
+        L -12 -11 C -13 -16 -8 -17 -7 -12 L -5 -5 L -5 -16
+        C -5 -21 0 -21 0 -16 L 1 -6 L 2 -15 C 2 -20 7 -19 7 -14
+        L 7 -4 L 9 -10 C 10 -14 14 -12 13 -8 L 12 4
+        C 12 8 9 11 8 14 C 4 16 -3 16 -7 14 Z`);
+      const closedHand = sampleHand(`M -7 14
+        C -10 11 -11 7 -13 3 C -16 -1 -14 -5 -11 -3 C -9 -2 -8 0 -7 0
+        L -8 -5 C -9 -10 -4 -11 -3 -7 L -2 -3 L -3 -8
+        C -3 -13 2 -13 3 -8 L 3 -3 L 4 -7 C 5 -12 10 -10 9 -6
+        L 8 -1 L 10 -4 C 12 -7 15 -4 13 0 L 12 5
+        C 11 9 9 11 8 14 C 4 16 -3 16 -7 14 Z`);
+      const dot = new Float32Array(128);
+      for (let i = 0; i < 64; i++) {
+        const angle = Math.atan2(14, -7) + Math.PI * 2 * i / 64;
+        dot[i * 2] = Math.cos(angle) * 3.5;
+        dot[i * 2 + 1] = Math.sin(angle) * 3.5;
+      }
+
+      const drawHand = () => {
+        const morph = Math.max(0, Math.min(1, state.hand));
+        const curl = Math.max(0, Math.min(1, state.grip));
+        let d = '';
+        for (let i = 0; i < 64; i++) {
+          const dotX = dot[i * 2];
+          const dotY = dot[i * 2 + 1];
+          const x = openHand[i * 2] + (closedHand[i * 2] - openHand[i * 2]) * curl;
+          const y = openHand[i * 2 + 1] + (closedHand[i * 2 + 1] - openHand[i * 2 + 1]) * curl;
+          d += `${i ? 'L' : 'M'}${dotX + (x - dotX + bendX * y / 40) * morph} ${dotY + (y - dotY + bendY * x / 50) * morph}`;
+        }
+        hand.setAttribute('d', `${d}Z`);
+        const shade = Math.round(41 + 214 * morph);
+        hand.setAttribute('fill', `rgb(${shade} ${shade} ${shade})`);
+      };
 
       const draw = () => {
+        contour.style.display = shaft.style.display = handMode ? 'none' : '';
+        hand.style.display = handMode ? '' : 'none';
+        if (handMode) {
+          drawHand();
+          this.style.transform = `translate3d(${pointerX - 40}px, ${pointerY - 40}px, 0)`;
+          outline.style.opacity = '1';
+          hotspot.style.opacity = '0';
+          return;
+        }
         const x = state.width / 2;
         const y = state.height / 2;
         const cx = x * .55228475;
@@ -109,6 +170,9 @@
         frame = previousTime = 0;
         state.width = state.height = 7;
         state.arrow = 0;
+        state.hand = state.grip = state.handSpeed = state.gripSpeed = 0;
+        handMode = false;
+        document.documentElement.removeAttribute('data-liquid-scroll-cursor');
         state.widthSpeed = state.heightSpeed = state.arrowSpeed = 0;
         bendX = bendY = 0;
       };
@@ -119,7 +183,8 @@
         previousTime = time;
         let settled = true;
         for (const { value, speed } of axes) {
-          state[speed] += ((goals[value] - state[value]) * 550 - state[speed] * 34) * dt;
+          const soft = value === 'hand' || value === 'grip';
+          state[speed] += ((goals[value] - state[value]) * (soft ? 260 : 550) - state[speed] * (soft ? 25 : 34)) * dt;
           state[value] += state[speed] * dt;
           if (Math.abs(goals[value] - state[value]) > .01 || Math.abs(state[speed]) > .05) settled = false;
         }
@@ -135,9 +200,11 @@
 
       const updateShape = () => {
         const hero = active?.classList.contains('hero-card');
-        goals.width = active ? (hero ? 18 : 24) + (pressed ? 3 : 0) : 7;
-        goals.height = active ? (hero ? 18 : 24) * (pressed ? .76 : 1) : 7;
+        goals.width = active && !handMode ? (hero ? 18 : 24) + (pressed ? 3 : 0) : 7;
+        goals.height = active && !handMode ? (hero ? 18 : 24) * (pressed ? .76 : 1) : 7;
         goals.arrow = hero ? 1 : 0;
+        goals.hand = active && handMode ? 1 : 0;
+        goals.grip = active && handMode && pressed ? 1 : 0;
         if (!frame) frame = requestAnimationFrame(tick);
       };
 
@@ -150,10 +217,12 @@
         if (!frame) frame = requestAnimationFrame(tick);
       };
 
-      const enter = (link: HTMLAnchorElement, event: PointerEvent) => {
+      const enter = (link: HTMLElement, event: PointerEvent) => {
         if (event.pointerType !== 'mouse' || !finePointer.matches || reducedMotion.matches || forcedColors.matches) return;
         active?.removeAttribute('data-liquid-cursor');
         active = link;
+        handMode = link.matches('[data-scroll-thumb]');
+        document.documentElement.toggleAttribute('data-liquid-scroll-cursor', handMode);
         pressed = event.buttons === 1;
         pointerX = event.clientX;
         pointerY = event.clientY;
@@ -194,7 +263,7 @@
       window.addEventListener('pointerup', () => { if (active) { pressed = false; updateShape(); } }, { signal });
       window.addEventListener('pointercancel', hide, { signal });
       window.addEventListener('blur', hide, { signal });
-      window.addEventListener('scroll', hide, { capture: true, passive: true, signal });
+      window.addEventListener('scroll', () => { if (!handMode || !pressed) hide(); }, { capture: true, passive: true, signal });
       window.addEventListener('resize', hide, { passive: true, signal });
       document.addEventListener('keydown', hide, { signal });
       document.addEventListener('visibilitychange', () => { if (document.hidden) hide(); }, { signal });

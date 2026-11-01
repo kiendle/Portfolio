@@ -1,8 +1,12 @@
 ---
+import AuroraBorder from './AuroraBorder.astro';
 import segments from '../data/photo-segments.json';
 ---
 
 <figure class="photo-section segmented-photo" data-segmented-photo>
+  <AuroraBorder intro>
+    <span class="photo-hint">Hover over image to see more</span>
+  </AuroraBorder>
   <img
     class="campus-photo"
     src="/photos/campus-1408.webp"
@@ -503,6 +507,34 @@ import segments from '../data/photo-segments.json';
 <style>
   .segmented-photo {
     position: relative;
+  }
+
+  @font-face {
+    font-family: 'Caveat';
+    src: url('/fonts/caveat.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+  }
+
+  .photo-hint {
+    position: absolute;
+    right: 8px;
+    bottom: calc(100% + 14px);
+    color: #77736b;
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
+    line-height: 1.1;
+    transform: rotate(-2deg);
+    pointer-events: none;
+  }
+
+  @media (max-width: 600px) {
+    .segmented-photo { margin-top: 28px; }
+    .photo-hint {
+      right: 4px;
+      font-size: 21px;
+    }
   }
 
   .subject-overlay {

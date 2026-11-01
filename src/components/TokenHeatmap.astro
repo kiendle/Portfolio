@@ -43,7 +43,7 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
       </p>
       <p class="usage-empty" data-empty hidden={hasUsage}>No collected usage yet.</p>
 
-      <div class="usage-scroll" data-calendar-shell hidden={!hasUsage}>
+      <div id="token-usage-scroll" class="usage-scroll" data-calendar-shell hidden={!hasUsage}>
         <div class="usage-calendar" data-calendar style={`--weeks: ${calendar.weeks}`}>
           <div aria-hidden="true"></div>
           <div class="usage-months" data-months aria-hidden="true">
@@ -89,6 +89,20 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
             ))}
           </div>
         </div>
+      </div>
+      <div class="usage-scrollbar" data-scrollbar hidden>
+        <button
+          class="usage-scroll-thumb"
+          data-scroll-thumb
+          type="button"
+          role="scrollbar"
+          aria-label="Scroll token usage"
+          aria-controls="token-usage-scroll"
+          aria-orientation="horizontal"
+          aria-valuemin="0"
+          aria-valuemax="0"
+          aria-valuenow="0"
+        ></button>
       </div>
 
       <div class="usage-key" data-key hidden={!hasUsage} aria-label="Color scale: less to more token usage">
@@ -146,6 +160,8 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
       const empty = this.querySelector<HTMLElement>('[data-empty]')!;
       const shell = this.querySelector<HTMLElement>('[data-calendar-shell]')!;
       const canvas = this.querySelector<HTMLElement>('[data-calendar]')!;
+      const scrollbar = this.querySelector<HTMLElement>('[data-scrollbar]')!;
+      const thumb = this.querySelector<HTMLButtonElement>('[data-scroll-thumb]')!;
       const months = this.querySelector<HTMLElement>('[data-months]')!;
       const grid = this.querySelector<HTMLElement>('[data-grid]')!;
       const key = this.querySelector<HTMLElement>('[data-key]')!;
@@ -243,6 +259,129 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
         button.tabIndex = 0;
       };
 
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      let scrollRange = 0;
+      let thumbTravel = 0;
+      let drag: { id: number; x: number; y: number; scroll: number; time: number } | null = null;
+      let liquidFrame = 0;
+      let liquidTime = 0;
+      let flow = 0;
+      let flowSpeed = 0;
+      let flowTarget = 0;
+      let hovered = false;
+      let lift = 0;
+      let liftSpeed = 0;
+      let liftTarget = 0;
+      let grip = 0;
+      let gripSpeed = 0;
+
+      const animateThumb = (time: number) => {
+        liquidFrame = 0;
+        const dt = liquidTime ? Math.min((time - liquidTime) / 1000, 1 / 30) : 1 / 60;
+        liquidTime = time;
+        const gripTarget = drag ? 1 : hovered ? 0.35 : 0;
+        flowSpeed += ((flowTarget - flow) * 200 - flowSpeed * 19) * dt;
+        liftSpeed += ((liftTarget - lift) * 220 - liftSpeed * 22) * dt;
+        gripSpeed += ((gripTarget - grip) * 300 - gripSpeed * 24) * dt;
+        flow += flowSpeed * dt;
+        lift += liftSpeed * dt;
+        grip += gripSpeed * dt;
+        flowTarget *= Math.exp(-6 * dt);
+        const stretch = Math.min(1.4, Math.abs(flow));
+        thumb.style.setProperty('--thumb-stretch', String(1 + stretch * 0.22));
+        thumb.style.setProperty('--thumb-squash', String(1 - stretch * 0.22));
+        thumb.style.setProperty('--thumb-bend', `${flow * -10}deg`);
+        thumb.style.setProperty('--thumb-lift', `${lift}px`);
+        thumb.style.setProperty('--thumb-height', `${6 + grip * 4}px`);
+        if (Math.abs(flow) + Math.abs(flowSpeed) + Math.abs(flowTarget)
+          + Math.abs(lift - liftTarget) + Math.abs(liftSpeed)
+          + Math.abs(grip - gripTarget) + Math.abs(gripSpeed) > 0.003) {
+          liquidFrame = requestAnimationFrame(animateThumb);
+        } else {
+          liquidTime = 0;
+        }
+      };
+
+      const wakeThumb = () => {
+        if (!reducedMotion.matches && !liquidFrame) liquidFrame = requestAnimationFrame(animateThumb);
+      };
+      thumb.addEventListener('pointerenter', () => { hovered = true; wakeThumb(); }, { signal });
+      thumb.addEventListener('pointerleave', () => { hovered = false; wakeThumb(); }, { signal });
+
+      const syncThumb = () => {
+        const position = drag?.scroll ?? shell.scrollLeft;
+        thumb.style.transform = `translateX(${scrollRange ? position / scrollRange * thumbTravel : 0}px)`;
+        thumb.setAttribute('aria-valuenow', String(Math.round(shell.scrollLeft)));
+      };
+
+      const measureScrollbar = () => {
+        scrollRange = Math.max(0, shell.scrollWidth - shell.clientWidth);
+        scrollbar.hidden = shell.hidden || scrollRange <= 1;
+        if (scrollbar.hidden) return;
+        const width = scrollbar.clientWidth;
+        const thumbWidth = Math.min(width, Math.max(44, width * shell.clientWidth / shell.scrollWidth));
+        thumbTravel = width - thumbWidth;
+        thumb.style.width = `${thumbWidth}px`;
+        thumb.setAttribute('aria-valuemax', String(Math.round(scrollRange)));
+        syncThumb();
+      };
+
+      thumb.addEventListener('pointerdown', (event) => {
+        if (!event.isPrimary || event.button !== 0 || thumbTravel <= 0) return;
+        thumb.setPointerCapture(event.pointerId);
+        drag = { id: event.pointerId, x: event.clientX, y: event.clientY, scroll: Math.max(0, Math.min(scrollRange, shell.scrollLeft)), time: event.timeStamp };
+        thumb.classList.add('is-dragging');
+        wakeThumb();
+      }, { signal });
+      thumb.addEventListener('pointermove', (event) => {
+        if (!drag || event.pointerId !== drag.id) return;
+        const deltaX = event.clientX - drag.x;
+        // Discard travel beyond an end so even the first pixel back moves the thumb.
+        drag.scroll = Math.max(0, Math.min(scrollRange, drag.scroll + deltaX / thumbTravel * scrollRange));
+        shell.scrollLeft = drag.scroll;
+        syncThumb();
+        if (!reducedMotion.matches) {
+          flowTarget = Math.max(-1.4, Math.min(1.4, deltaX / Math.max(1, event.timeStamp - drag.time) * 0.9));
+          liftTarget = Math.max(-4, Math.min(4, (event.clientY - drag.y) * 0.24));
+          wakeThumb();
+        }
+        drag.x = event.clientX;
+        drag.time = event.timeStamp;
+      }, { signal });
+      const endDrag = (event: PointerEvent) => {
+        if (event.pointerId !== drag?.id) return;
+        drag = null;
+        syncThumb();
+        flowTarget = 0;
+        liftTarget = 0;
+        wakeThumb();
+        thumb.classList.remove('is-dragging');
+        if (thumb.hasPointerCapture(event.pointerId)) thumb.releasePointerCapture(event.pointerId);
+      };
+      thumb.addEventListener('pointerup', endDrag, { signal });
+      thumb.addEventListener('pointercancel', endDrag, { signal });
+      thumb.addEventListener('lostpointercapture', endDrag, { signal });
+      thumb.addEventListener('keydown', (event) => {
+        let next = shell.scrollLeft;
+        switch (event.key) {
+          case 'ArrowLeft': next -= 40; break;
+          case 'ArrowRight': next += 40; break;
+          case 'PageUp': next -= shell.clientWidth; break;
+          case 'PageDown': next += shell.clientWidth; break;
+          case 'Home': next = 0; break;
+          case 'End': next = scrollRange; break;
+          default: return;
+        }
+        event.preventDefault();
+        shell.scrollLeft = Math.max(0, Math.min(scrollRange, next));
+        syncThumb();
+      }, { signal });
+      shell.addEventListener('scroll', syncThumb, { passive: true, signal });
+      const scrollbarObserver = new ResizeObserver(measureScrollbar);
+      shell.classList.add('has-liquid-scrollbar');
+      scrollbarObserver.observe(shell);
+      scrollbarObserver.observe(canvas);
+
       const render = () => {
         const retainFocus = grid.contains(document.activeElement);
         const previousDate = retainFocus ? calendar.days[activeIndex]?.date : undefined;
@@ -303,6 +442,7 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
           return element;
         });
         grid.replaceChildren(...rows);
+        measureScrollbar();
         if (retainFocus) buttons[activeIndex]?.focus({ preventScroll: true });
 
         const latestDate = calendar.days[calendar.days.length - 1]?.date;
@@ -357,7 +497,8 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
         }
         settleTooltip();
       }, { signal });
-      grid.addEventListener('pointerup', (event) => {
+      // Click follows the focus change that would otherwise dismiss a touch popup.
+      grid.addEventListener('click', (event) => {
         if (event.pointerType !== 'touch') return;
         const button = (event.target as HTMLElement).closest<HTMLButtonElement>('.usage-day');
         if (!button) return;
@@ -427,6 +568,10 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
       this.cleanup = () => {
         controller.abort();
         statisticObserver?.disconnect();
+        scrollbarObserver.disconnect();
+        cancelAnimationFrame(liquidFrame);
+        shell.classList.remove('has-liquid-scrollbar');
+        scrollbar.hidden = true;
         totalNumber.animated = false;
         window.clearInterval(dayBoundaryCheck);
         if (scrollFrame !== undefined) window.cancelAnimationFrame(scrollFrame);
@@ -470,6 +615,16 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
   .usage-total number-flow[hidden] { display: none; }
   .usage-empty { margin: 0; padding-block: 1.75rem 2rem; color: #858a7c; text-align: center; font-size: 0.9rem; }
   .usage-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 16px 3px 7px; scrollbar-width: thin; scrollbar-color: #d4dccc transparent; }
+  .usage-scroll.has-liquid-scrollbar { scrollbar-width: none; }
+  .usage-scroll.has-liquid-scrollbar::-webkit-scrollbar { display: none; }
+  .usage-scrollbar { position: relative; height: 24px; margin: 0 3px; }
+  .usage-scrollbar[hidden] { display: none; }
+  .usage-scroll-thumb { position: absolute; inset: 0 auto 0 0; height: 24px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; user-select: none; }
+  .usage-scroll-thumb::before { content: ''; position: absolute; inset: 50% 3px auto; height: var(--thumb-height, 6px); border-radius: 999px; background: #b5bfae; transform: translateY(calc(-50% + var(--thumb-lift, 0px))) scaleX(var(--thumb-stretch, 1)) scaleY(var(--thumb-squash, 1)) skewX(var(--thumb-bend, 0deg)); transition: background-color 240ms ease; }
+  .usage-scroll-thumb:hover::before { background: #99aa8e; }
+  .usage-scroll-thumb.is-dragging { cursor: grabbing; }
+  .usage-scroll-thumb.is-dragging::before { background: #7e9470; }
+  .usage-scroll-thumb:focus-visible { outline: 2px solid #638753; outline-offset: 1px; border-radius: 999px; }
   .usage-calendar { display: grid; grid-template-columns: 25px minmax(0, 1fr); grid-template-rows: 17px auto; gap: 5px 8px; min-width: min(610px, calc(var(--weeks) * 17px + 33px)); max-width: calc(var(--weeks) * 17px + 33px); }
   .usage-months { display: grid; grid-template-columns: repeat(var(--weeks), minmax(0, 1fr)); gap: 3px; align-items: start; color: #7c8373; font-size: 0.63rem; line-height: 1; }
   .usage-months :global(.usage-month) { white-space: nowrap; }
@@ -507,6 +662,7 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
   @media (prefers-reduced-motion: reduce) {
     .usage-tooltip { transition: none; filter: none; transform: none; }
     .usage-tooltip:popover-open.is-scrubbing { filter: none; }
+    .usage-scroll-thumb::before { height: 6px; transform: translateY(-50%); transition: none; }
   }
   @media (max-width: 480px) {
     .usage-card { padding: 0.85rem; }
