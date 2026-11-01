@@ -277,6 +277,14 @@ h2 {
   white-space: nowrap;
 }
 
+@media (max-width: 640px), (hover: none) and (pointer: coarse) {
+  html,
+  body {
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+}
+
 @media (max-width: 640px) {
   .notebook {
     gap: 32px;
