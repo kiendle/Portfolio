@@ -141,7 +141,8 @@ import segments from '../data/photo-segments.json';
     skin: SVGPathElement;
     highlight: SVGPathElement;
     ripple: SVGAnimationElement;
-    motion: Animation[];
+    motion: { cancel: () => void } | null;
+    contour: number[] | null;
     transition: number;
     anchor: Point;
   };
@@ -162,7 +163,8 @@ import segments from '../data/photo-segments.json';
         skin: popup.querySelector<SVGPathElement>('[data-liquid-skin]')!,
         highlight: photo.querySelector<SVGPathElement>(`[data-subject-highlight="${trigger.dataset.subject}"]`)!,
         ripple: photo.querySelector<SVGAnimationElement>(`[data-subject-ripple="${trigger.dataset.subject}"]`)!,
-        motion: [],
+        motion: null,
+        contour: null,
         transition: 0,
         anchor: { x: Number(trigger.dataset.anchorX), y: Number(trigger.dataset.anchorY) },
       };
@@ -186,18 +188,44 @@ import segments from '../data/photo-segments.json';
       const right = x + w;
       const bottom = y + h;
       const corner = r * .55228475;
-      return `M ${x + r} ${y}
-        C ${x + w * .4} ${y - bulge} ${x + w * .6} ${y - bulge} ${right - r} ${y}
-        C ${right - r + corner} ${y} ${right} ${y + r - corner} ${right} ${y + r}
-        C ${right + bulge} ${y + h * .4} ${right + bulge} ${y + h * .6} ${right} ${bottom - r}
-        C ${right} ${bottom - r + corner} ${right - r + corner} ${bottom} ${right - r} ${bottom}
-        C ${right - r} ${bottom} ${anchor + neck} ${bottom} ${anchor + neck} ${bottom + pull * .45}
-        C ${anchor + neck} ${bottom + pull * .8} ${anchor + neck / 2} ${bottom + pull} ${anchor} ${bottom + pull}
-        C ${anchor - neck / 2} ${bottom + pull} ${anchor - neck} ${bottom + pull * .8} ${anchor - neck} ${bottom + pull * .45}
-        C ${anchor - neck} ${bottom} ${x + r} ${bottom} ${x + r} ${bottom}
-        C ${x + r - corner} ${bottom} ${x} ${bottom - r + corner} ${x} ${bottom - r}
-        C ${x - bulge} ${y + h * .6} ${x - bulge} ${y + h * .4} ${x} ${y + r}
-        C ${x} ${y + r - corner} ${x + r - corner} ${y} ${x + r} ${y} Z`;
+      return [
+        x + r, y,
+        x + w * .4, y - bulge, x + w * .6, y - bulge, right - r, y,
+        right - r + corner, y, right, y + r - corner, right, y + r,
+        right + bulge, y + h * .4, right + bulge, y + h * .6, right, bottom - r,
+        right, bottom - r + corner, right - r + corner, bottom, right - r, bottom,
+        right - r, bottom, anchor + neck, bottom, anchor + neck, bottom + pull * .45,
+        anchor + neck, bottom + pull * .8, anchor + neck / 2, bottom + pull, anchor, bottom + pull,
+        anchor - neck / 2, bottom + pull, anchor - neck, bottom + pull * .8, anchor - neck, bottom + pull * .45,
+        anchor - neck, bottom, x + r, bottom, x + r, bottom,
+        x + r - corner, bottom, x, bottom - r + corner, x, bottom - r,
+        x - bulge, y + h * .6, x - bulge, y + h * .4, x, y + r,
+        x, y + r - corner, x + r - corner, y, x + r, y,
+      ];
+    };
+
+    const drawContour = (subject: Subject, contour: number[]) => {
+      subject.contour = contour;
+      let d = `M ${contour[0]} ${contour[1]}`;
+      for (let i = 2; i < contour.length; i += 6) {
+        d += ` C ${contour[i]} ${contour[i + 1]} ${contour[i + 2]} ${contour[i + 3]} ${contour[i + 4]} ${contour[i + 5]}`;
+      }
+      subject.skin.setAttribute('d', `${d} Z`);
+    };
+
+    const liquidEase = (progress: number) => {
+      if (progress <= 0 || progress >= 1) return progress;
+      let low = 0;
+      let high = 1;
+      // Invert the x coordinate of cubic-bezier(.35, 0, .2, 1).
+      for (let i = 0; i < 16; i++) {
+        const t = (low + high) / 2;
+        const x = 3 * (1 - t) ** 2 * t * .35 + 3 * (1 - t) * t ** 2 * .2 + t ** 3;
+        if (x < progress) low = t;
+        else high = t;
+      }
+      const t = (low + high) / 2;
+      return t * t * (3 - 2 * t);
     };
 
     const popupGeometry = (subject: Subject) => {
@@ -208,21 +236,21 @@ import segments from '../data/photo-segments.json';
       const anchor = Math.max(20, Math.min(box.width - 20, sourceX));
       subject.skin.ownerSVGElement!.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
       const rest = liquidContour(0, 0, box.width, box.height, 12, anchor);
-      subject.skin.setAttribute('d', rest);
+      drawContour(subject, rest);
       return { w: box.width, h: box.height, anchor, source, rest };
     };
 
     const cancelSubjectMotion = (subject: Subject) => {
       subject.transition++;
-      subject.motion.forEach(animation => animation.cancel());
-      subject.motion = [];
+      subject.motion?.cancel();
+      subject.motion = null;
     };
 
     const animatePopup = async (subject: Subject, opening: boolean) => {
-      const current = subject.motion.length ? getComputedStyle(subject.skin).d : null;
-      subject.motion.forEach(animation => animation.cancel());
-      subject.motion = [];
-      const token = ++subject.transition;
+      const current = subject.motion ? subject.contour : null;
+      const opacity = getComputedStyle(subject.content).opacity;
+      cancelSubjectMotion(subject);
+      const token = subject.transition;
       const { w, h, anchor, source, rest } = popupGeometry(subject);
       if (!motionPreference.matches) subject.ripple.beginElement();
       if (motionPreference.matches) {
@@ -231,29 +259,58 @@ import segments from '../data/photo-segments.json';
       }
       const gap = Math.max(0, source - h);
       const poses = [
-        { offset: 0, d: liquidContour(anchor - 12, source - 12, 24, 24, 12, anchor, 0, 4) },
-        { offset: .22, d: liquidContour(anchor - 40, h * .58, 80, h * .4, 32, anchor, gap + 9, 12, 3) },
-        { offset: .46, d: liquidContour(3, -3, w - 6, h - 8, 26, anchor, gap + 22, 10, 4) },
-        { offset: .62, d: liquidContour(-2, -5, w + 4, h + 3, 18, anchor, gap * .5, 4, -1) },
-        { offset: .8, d: liquidContour(1, 2, w - 2, h - 2, 14, anchor, 0, 8, 1) },
-        { offset: 1, d: rest },
+        { offset: 0, contour: liquidContour(anchor - 12, source - 12, 24, 24, 12, anchor, 0, 4) },
+        { offset: .22, contour: liquidContour(anchor - 40, h * .58, 80, h * .4, 32, anchor, gap + 9, 12, 3) },
+        { offset: .46, contour: liquidContour(3, -3, w - 6, h - 8, 26, anchor, gap + 22, 10, 4) },
+        { offset: .62, contour: liquidContour(-2, -5, w + 4, h + 3, 18, anchor, gap * .5, 4, -1) },
+        { offset: .8, contour: liquidContour(1, 2, w - 2, h - 2, 14, anchor, 0, 8, 1) },
+        { offset: 1, contour: rest },
       ];
       const sequence = opening ? poses : poses.toReversed().map(pose => ({ ...pose, offset: 1 - pose.offset }));
-      const frames = sequence.map(pose => ({
-        offset: pose.offset, d: `path("${pose.d.replace(/\s+/g, ' ')}")`, easing: 'cubic-bezier(.35,0,.2,1)',
-      }));
-      if (current) frames[0].d = current;
+      if (current) sequence[0] = { ...sequence[0], contour: current };
+      const contour = [...sequence[0].contour];
+      drawContour(subject, contour);
       subject.popup.setAttribute('data-liquid-moving', '');
-      const shape = subject.skin.animate(frames, { duration: opening ? 500 : 320, fill: 'both' });
       const content = subject.content.animate(opening
         ? [{ opacity: 0, filter: 'blur(2px)' }, { opacity: 1, filter: 'blur(0)' }]
-        : [{ opacity: getComputedStyle(subject.content).opacity, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(2px)' }],
+        : [{ opacity, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(2px)' }],
       { duration: opening ? 160 : 90, delay: opening ? 205 : 0, fill: 'both', easing: 'ease-out' });
-      subject.motion = [shape, content];
-      try { await shape.finished; } catch { return false; }
-      if (subject.transition !== token) return false;
-      subject.motion.forEach(animation => animation.cancel());
-      subject.motion = [];
+      const duration = opening ? 500 : 320;
+      const started = performance.now();
+      const finished = await new Promise<boolean>(resolve => {
+        let frame = 0;
+        let segment = 0;
+        subject.motion = {
+          cancel: () => {
+            window.cancelAnimationFrame(frame);
+            content.cancel();
+            resolve(false);
+          },
+        };
+        const tick = (time: number) => {
+          frame = 0;
+          if (subject.transition !== token) {
+            resolve(false);
+            return;
+          }
+          const progress = Math.max(0, Math.min(1, (time - started) / duration));
+          while (segment < sequence.length - 2 && progress > sequence[segment + 1].offset) segment++;
+          const from = sequence[segment];
+          const to = sequence[segment + 1];
+          const blend = liquidEase((progress - from.offset) / (to.offset - from.offset));
+          for (let i = 0; i < contour.length; i++) {
+            contour[i] = from.contour[i] + (to.contour[i] - from.contour[i]) * blend;
+          }
+          // SVG attributes work even in engines that discard CSS d keyframes.
+          drawContour(subject, contour);
+          if (progress < 1) frame = window.requestAnimationFrame(tick);
+          else resolve(true);
+        };
+        frame = window.requestAnimationFrame(tick);
+      });
+      if (!finished || subject.transition !== token) return false;
+      subject.motion?.cancel();
+      subject.motion = null;
       subject.popup.removeAttribute('data-liquid-moving');
       popupGeometry(subject);
       return true;
@@ -322,7 +379,7 @@ import segments from '../data/photo-segments.json';
       const top = Math.max(viewportTop + 12, Math.min(anchor.y - card.height - 10, viewportTop + viewportHeight - card.height - 12));
       popup.style.left = `${left + window.scrollX}px`;
       popup.style.top = `${top + window.scrollY}px`;
-      if (!active.motion.length) popupGeometry(active);
+      if (!active.motion) popupGeometry(active);
     };
 
     const schedulePosition = () => {
@@ -338,7 +395,7 @@ import segments from '../data/photo-segments.json';
       pointerExit = null;
       const opening = active !== subject;
       if (opening) {
-        close(false, true);
+        if (active) close(false, true);
         for (const other of subjects) {
           if (other === subject || !other.popup.matches(':popover-open')) continue;
           cancelSubjectMotion(other);
@@ -499,6 +556,7 @@ import segments from '../data/photo-segments.json';
       observer.disconnect();
       window.cancelAnimationFrame(positionFrame);
       close(false, true);
+      subjects.forEach(cancelSubjectMotion);
       photo.removeAttribute('data-segments-ready');
     }, { once: true, signal });
     photo.setAttribute('data-segments-ready', '');

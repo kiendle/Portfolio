@@ -3,18 +3,12 @@ interface Props {
   intro?: boolean;
 }
 const { intro = false } = Astro.props;
-const inset = intro ? 3 : 6;
-const radius = intro ? 12 : 42;
-const strokeWidth = intro ? 5 : 12;
-const strokeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><rect x="${inset}" y="${inset}" rx="${radius}" fill="none" stroke="white" stroke-width="${strokeWidth}" style="width:calc(100% - ${inset * 2}px);height:calc(100% - ${inset * 2}px)"/></svg>`;
-const strokeMask = `url("data:image/svg+xml,${encodeURIComponent(strokeSvg)}")`;
 ---
 
-<div class:list={['aurora-border', { 'aurora-border--intro': intro }]} style={{ '--aura-stroke-mask': strokeMask }} aria-hidden="true">
-  <div class="aura-halo"></div>
-  <div class="aura-edge"></div>
+<aurora-border class:list={['aurora-border', { 'aurora-border--intro': intro }]} aria-hidden="true">
+  <canvas></canvas>
   <slot />
-</div>
+</aurora-border>
 
 <style is:global>
   @property --aura-angle {
@@ -46,43 +40,18 @@ const strokeMask = `url("data:image/svg+xml,${encodeURIComponent(strokeSvg)}")`;
 
 <style>
   .aurora-border {
-    --aura-gradient: conic-gradient(from var(--aura-angle), var(--aura-one), var(--aura-two), var(--aura-three), var(--aura-four), var(--aura-one));
     position: absolute;
     inset: 0;
+    display: block;
     pointer-events: none;
   }
 
-  .aura-edge,
-  .aura-halo {
+  canvas {
     position: absolute;
-    inset: var(--aura-inset, -8px);
+    pointer-events: none;
   }
-
-  .aura-edge::before,
-  .aura-halo::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--aura-gradient);
-    -webkit-mask: var(--aura-stroke-mask) center / 100% 100% no-repeat;
-    mask: var(--aura-stroke-mask) center / 100% 100% no-repeat;
-  }
-
-  .aura-edge {
-    filter: blur(var(--aura-blur, 8px));
-  }
-
-  .aura-halo {
-    opacity: 0.65;
-    filter: blur(var(--aura-halo-blur, 18px));
-  }
-
-
 
   .aurora-border--intro {
-    --aura-inset: -3px;
-    --aura-blur: 4px;
-    --aura-halo-blur: 10px;
     z-index: 1;
     opacity: 0;
     animation: photo-aura-turn 1.2s linear 900ms 2.5, photo-aura-arrive 3s ease 900ms both;
@@ -101,3 +70,145 @@ const strokeMask = `url("data:image/svg+xml,${encodeURIComponent(strokeSvg)}")`;
     .aurora-border--intro { display: none; animation: none; }
   }
 </style>
+
+<script>
+  // Nested rounded strokes provide soft falloff without masked/filtered CSS layers.
+  const glowLayers: ReadonlyArray<readonly [number, number]> = [
+    [60, 0.001], [48, 0.003], [40, 0.006], [32, 0.012],
+    [26, 0.024], [20, 0.045], [16, 0.065], [12, 0.095],
+    [9, 0.13], [6, 0.19], [4, 0.22],
+  ];
+
+  class AuroraBorder extends HTMLElement {
+    #cleanup: (() => void) | undefined;
+
+    connectedCallback() {
+      this.#cleanup?.();
+      const canvas = this.querySelector<HTMLCanvasElement>('canvas')!;
+      const context = canvas.getContext('2d')!;
+      const styles = getComputedStyle(this);
+      const intro = this.classList.contains('aurora-border--intro');
+      const demo = this.closest<HTMLElement>('aurora-glow');
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const forcedColors = matchMedia('(forced-colors: active)');
+      const controller = new AbortController();
+      const { signal } = controller;
+      const padding = intro ? 32 : 80;
+      canvas.style.top = canvas.style.left = `${-padding}px`;
+      canvas.style.width = canvas.style.height = `calc(100% + ${padding * 2}px)`;
+      const layers = intro ? glowLayers : glowLayers.map(([thickness, opacity]) => [thickness * 2.4, opacity] as const);
+      let width = 0;
+      let height = 0;
+      let ratio = 1;
+      let path: Path2D | undefined;
+      let frame = 0;
+      let playing = false;
+      let introPlaying = false;
+
+      const paint = () => {
+        if (!path || styles.display === 'none') return;
+        // WebKit can upgrade the element before its registered properties are styled.
+        const styledAngle = styles.getPropertyValue('--aura-angle');
+        if (!styledAngle) return;
+        context.clearRect(0, 0, canvas.width / ratio, canvas.height / ratio);
+        const angle = parseFloat(styledAngle) * Math.PI / 180 - Math.PI / 2;
+        const gradient = context.createConicGradient(angle, padding + width / 2, padding + height / 2);
+        const first = styles.getPropertyValue('--aura-one').trim();
+        gradient.addColorStop(0, first);
+        gradient.addColorStop(0.25, styles.getPropertyValue('--aura-two').trim());
+        gradient.addColorStop(0.5, styles.getPropertyValue('--aura-three').trim());
+        gradient.addColorStop(0.75, styles.getPropertyValue('--aura-four').trim());
+        gradient.addColorStop(1, first);
+        context.strokeStyle = gradient;
+        for (let i = 0; i < layers.length; i++) {
+          context.lineWidth = layers[i][0];
+          context.globalAlpha = layers[i][1];
+          context.stroke(path);
+        }
+        context.globalAlpha = 1;
+      };
+
+      const tick = () => {
+        frame = 0;
+        paint();
+        if (playing) frame = requestAnimationFrame(tick);
+      };
+
+      const sync = () => {
+        playing = !forcedColors.matches && !reducedMotion.matches
+          && (intro ? introPlaying : demo?.dataset.active === 'true');
+        if (!playing && frame) {
+          cancelAnimationFrame(frame);
+          frame = 0;
+        }
+        paint();
+        if (playing && !frame) frame = requestAnimationFrame(tick);
+      };
+
+      const resize = () => {
+        const box = this.getBoundingClientRect();
+        const nextRatio = devicePixelRatio || 1;
+        if (box.width === width && box.height === height && nextRatio === ratio) return;
+        width = box.width;
+        height = box.height;
+        ratio = nextRatio;
+        if (width <= 0 || height <= 0) {
+          path = undefined;
+          return;
+        }
+        canvas.width = Math.ceil((width + padding * 2) * ratio);
+        canvas.height = Math.ceil((height + padding * 2) * ratio);
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        context.lineJoin = 'round';
+        path = new Path2D();
+        const offset = intro ? 0 : -2;
+        path.roundRect(padding + offset, padding + offset, width - offset * 2, height - offset * 2, intro ? 12 : 42);
+        paint();
+      };
+
+      this.addEventListener('animationstart', (event) => {
+        if (event.target !== this || event.animationName !== 'photo-aura-turn') return;
+        introPlaying = true;
+        sync();
+      }, { signal });
+      const finish = (event: AnimationEvent) => {
+        if (event.target !== this || event.animationName !== 'photo-aura-turn') return;
+        introPlaying = false;
+        sync();
+      };
+      this.addEventListener('animationend', finish, { signal });
+      this.addEventListener('animationcancel', finish, { signal });
+      reducedMotion.addEventListener('change', sync, { signal });
+      forcedColors.addEventListener('change', sync, { signal });
+      window.addEventListener('resize', resize, { signal });
+
+      const sizeObserver = new ResizeObserver(resize);
+      sizeObserver.observe(this);
+      const stateObserver = demo ? new MutationObserver(sync) : null;
+      if (demo) stateObserver!.observe(demo, { attributes: true, attributeFilter: ['data-active', 'data-palette'] });
+
+      const rotation = this.getAnimations().find(animation => (animation as CSSAnimation).animationName === 'photo-aura-turn');
+      if (rotation?.effect) {
+        const time = Number(rotation.currentTime ?? 0);
+        const timing = rotation.effect.getComputedTiming();
+        introPlaying = rotation.playState === 'running' && time >= Number(timing.delay) && time < Number(timing.endTime);
+      }
+      resize();
+      sync();
+
+      this.#cleanup = () => {
+        playing = false;
+        cancelAnimationFrame(frame);
+        controller.abort();
+        sizeObserver.disconnect();
+        stateObserver?.disconnect();
+      };
+    }
+
+    disconnectedCallback() {
+      this.#cleanup?.();
+    }
+  }
+
+  customElements.define('aurora-border', AuroraBorder);
+</script>
