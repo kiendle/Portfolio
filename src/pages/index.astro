@@ -1,4 +1,5 @@
 ---
+import Analytics from '@vercel/analytics/astro';
 import TokenHeatmap from '../components/TokenHeatmap.astro';
 import ProgressiveBlur from '../components/ProgressiveBlur.astro';
 import PageReveal from '../components/PageReveal.astro';
@@ -84,5 +85,6 @@ const heroes = [
     <LiquidLinkCursor />
     <ProgressiveBlur />
     <PageReveal />
+    <Analytics />
   </body>
 </html>
