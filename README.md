@@ -2,6 +2,8 @@
 
 A static personal website built with Astro and TypeScript. The token heatmap reads a small, locally generated daily aggregate snapshot; it does not request usage records from visitors or a public API.
 
+The homepage starts at the top on desktop and mobile, including reloads and browser-history returns, instead of restoring an old scroll position. Explicit URL fragments still navigate to their anchors, and normal scrolling is unaffected.
+
 The photo’s Kien popup contains the name and links to LinkedIn, GitHub, and X (`@kiendlee`), with leading platform icons and no university subtitle. Social icons are from [Bootstrap Icons](https://github.com/twbs/icons), under the MIT license retained in `public/logos/bootstrap-icons-LICENSE.txt`.
 
 The Kien heading is plain, non-interactive text with no popup. The greeting and name stay above the full-width segmented photo with a small 12px gap between the name and image. Profile details are available only through Kien’s silhouette in the photo.

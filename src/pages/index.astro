@@ -19,6 +19,12 @@ const heroes = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      history.scrollRestoration = 'manual';
+      window.addEventListener('pageshow', () => {
+        if (!window.location.hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      });
+    </script>
     <meta name="theme-color" content="#ffffff" />
     <title>Kien — personal website</title>
     <meta
