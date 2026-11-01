@@ -497,11 +497,12 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
         }
         settleTooltip();
       }, { signal });
-      // Click follows the focus change that would otherwise dismiss a touch popup.
-      grid.addEventListener('click', (event) => {
+      grid.addEventListener('pointerup', (event) => {
         if (event.pointerType !== 'touch') return;
         const button = (event.target as HTMLElement).closest<HTMLButtonElement>('.usage-day');
         if (!button) return;
+        // Settle the previous day's focusout before opening the tapped day's details.
+        button.focus({ preventScroll: true });
         tapped = button;
         setActive(button);
         showTooltip(button);
