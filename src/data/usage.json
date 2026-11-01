@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-01T00:49:14.936Z",
+  "updatedAt": "2026-11-01T14:00:08.142Z",
   "timeZone": "America/New_York",
   "days": [
     {
@@ -724,11 +724,19 @@
     },
     {
       "date": "2026-10-31",
-      "inputTokens": 10821786,
-      "outputTokens": 1366352,
+      "inputTokens": 13301836,
+      "outputTokens": 1984287,
       "cacheCreationTokens": 0,
-      "cacheReadTokens": 276818560,
-      "totalTokens": 289006698
+      "cacheReadTokens": 387637760,
+      "totalTokens": 402923883
+    },
+    {
+      "date": "2026-11-01",
+      "inputTokens": 22222098,
+      "outputTokens": 3928446,
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 627043904,
+      "totalTokens": 653194448
     }
   ]
 }
