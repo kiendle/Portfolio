@@ -52,17 +52,19 @@ async function install(values) {
   const node = await realpath(process.execPath);
   const ccusage = findExecutable(process.env.CCUSAGE_BIN || 'ccusage');
   const npm = findExecutable(process.env.NPM_BIN || 'npm');
+  const git = findExecutable('git');
   if (!(await exists(resolve(checkout, 'node_modules/astro/package.json')))) {
     throw new Error('Install the project dependencies before scheduling the daily build; see README.md.');
   }
 
   const environment = {
     HOME: homedir(),
-    PATH: executablePathEnvironment(node, npm, ccusage),
+    PATH: executablePathEnvironment(node, npm, ccusage, git),
     CCUSAGE_BIN: ccusage,
     NPM_BIN: npm,
     USAGE_TIME_ZONE: timeZone,
     ASTRO_TELEMETRY_DISABLED: '1',
+    GIT_TERMINAL_PROMPT: '0',
   };
   const environmentXml = Object.entries(environment).map(([key, value]) => `    <key>${xml(key)}</key><string>${xml(value)}</string>`).join('\n');
   const stdoutPath = resolve(logDirectory, 'stdout.log');
@@ -112,7 +114,7 @@ ${environmentXml}
   console.log(`Installed ${label}: daily at ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} in the Mac's local wall-clock timezone.`);
   console.log(`Usage date grouping: ${timeZone}. Checkout: ${checkout}`);
   console.log(`Logs: ${logDirectory}`);
-  console.log('RunAtLoad is off. This job only collects local aggregates and builds dist/; it never commits, pushes, or deploys.');
+  console.log('RunAtLoad is off. This job collects local aggregates, builds dist/, then publishes only the sanitized usage snapshot to origin/main for Vercel deployment.');
 }
 
 async function uninstall() {
@@ -138,7 +140,7 @@ try {
     help: { type: 'boolean' },
   } });
   if (values.help) {
-    console.log('Usage: node scripts/install-usage-launchd.mjs --install [--hour 9] [--minute 0] [--timezone IANA]\n       node scripts/install-usage-launchd.mjs --uninstall\nExplicit opt-in; defaults to 09:00 daily, local collection and build only.');
+    console.log('Usage: node scripts/install-usage-launchd.mjs --install [--hour 9] [--minute 0] [--timezone IANA]\n       node scripts/install-usage-launchd.mjs --uninstall\nExplicit opt-in; defaults to 09:00 daily: collect, build, then publish sanitized usage to origin/main for Vercel deployment.');
   } else {
     if (process.platform !== 'darwin') throw new Error('This scheduler installer requires macOS. Run refresh-usage.mjs manually elsewhere.');
     if (Boolean(values.install) === Boolean(values.uninstall)) throw new Error('Choose exactly one explicit action: --install or --uninstall.');
