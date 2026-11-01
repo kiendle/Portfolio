@@ -3,9 +3,14 @@ interface Props {
   intro?: boolean;
 }
 const { intro = false } = Astro.props;
+const inset = intro ? 3 : 6;
+const radius = intro ? 12 : 42;
+const strokeWidth = intro ? 5 : 12;
+const strokeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><rect x="${inset}" y="${inset}" rx="${radius}" fill="none" stroke="white" stroke-width="${strokeWidth}" style="width:calc(100% - ${inset * 2}px);height:calc(100% - ${inset * 2}px)"/></svg>`;
+const strokeMask = `url("data:image/svg+xml,${encodeURIComponent(strokeSvg)}")`;
 ---
 
-<div class:list={['aurora-border', { 'aurora-border--intro': intro }]} aria-hidden="true">
+<div class:list={['aurora-border', { 'aurora-border--intro': intro }]} style={{ '--aura-stroke-mask': strokeMask }} aria-hidden="true">
   <div class="aura-halo"></div>
   <div class="aura-edge"></div>
   <slot />
@@ -51,7 +56,6 @@ const { intro = false } = Astro.props;
   .aura-halo {
     position: absolute;
     inset: var(--aura-inset, -8px);
-    border-radius: var(--aura-radius, 48px);
   }
 
   .aura-edge::before,
@@ -59,10 +63,9 @@ const { intro = false } = Astro.props;
     content: '';
     position: absolute;
     inset: 0;
-    padding: var(--aura-width, 12px);
-    border-radius: inherit;
     background: var(--aura-gradient);
-    mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0);
+    -webkit-mask: var(--aura-stroke-mask) center / 100% 100% no-repeat;
+    mask: var(--aura-stroke-mask) center / 100% 100% no-repeat;
   }
 
   .aura-edge {
@@ -74,17 +77,11 @@ const { intro = false } = Astro.props;
     filter: blur(var(--aura-halo-blur, 18px));
   }
 
-  .aura-halo::before {
-    padding: var(--aura-halo-width, 18px);
-  }
 
 
   .aurora-border--intro {
     --aura-inset: -3px;
-    --aura-radius: 16px;
-    --aura-width: 5px;
     --aura-blur: 4px;
-    --aura-halo-width: 10px;
     --aura-halo-blur: 10px;
     z-index: 1;
     opacity: 0;
