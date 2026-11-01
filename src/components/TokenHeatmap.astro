@@ -488,7 +488,6 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
       }, { signal });
       grid.addEventListener('pointerout', (event) => {
         if (event.pointerType === 'touch') return;
-        // Keep one popover through cell gaps instead of closing/reopening it.
         if (event.relatedTarget instanceof Node && grid.contains(event.relatedTarget)) {
           if (tooltipTimer) clearTimeout(tooltipTimer);
           tooltip.classList.add('is-scrubbing');
@@ -544,17 +543,14 @@ const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
       window.addEventListener('resize', positionTooltip, { passive: true, signal });
 
       const refreshToday = () => {
+        if (document.hidden) return;
         const current = todayInTimeZone(data.timeZone);
         if (current === today) return;
         today = current;
         render();
       };
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) refreshToday();
-      }, { signal });
-      const dayBoundaryCheck = window.setInterval(() => {
-        if (!document.hidden) refreshToday();
-      }, 60_000);
+      document.addEventListener('visibilitychange', refreshToday, { signal });
+      const dayBoundaryCheck = window.setInterval(refreshToday, 60_000);
 
       // A static build may have been generated before the current local day.
       render();

@@ -50,6 +50,8 @@ The production build is written to `dist/`. These commands do not deploy a hoste
 
 Verify changes with `npm run check`, `npm test`, and `npm run build`.
 
+For interaction-only refactors, also exercise the homepage at desktop and narrow widths: photo hover/tap, Enter/Space, Tab and Escape focus restoration, rapid subject switching, reduced-motion changes, heatmap arrow/Home/End navigation, and scrollbar movement. Preserve animation timing and geometry, accessible labels, and the hidden-tab guard on day-boundary refreshes; typechecking and calendar unit tests do not cover these browser behaviors.
+
 ## Collect local token usage
 
 Run from this checkout:

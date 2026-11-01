@@ -153,17 +153,20 @@ import segments from '../data/photo-segments.json';
 
     const controller = new AbortController();
     const { signal } = controller;
-    const subjects: Subject[] = [...photo.querySelectorAll<SVGPathElement>('[data-subject-trigger]')].map((trigger) => ({
-      trigger,
-      popup: photo.querySelector<HTMLElement>(`#${trigger.getAttribute('aria-controls')}`)!,
-      content: photo.querySelector<HTMLElement>(`#${trigger.getAttribute('aria-controls')} .subject-content`)!,
-      skin: photo.querySelector<SVGPathElement>(`#${trigger.getAttribute('aria-controls')} [data-liquid-skin]`)!,
-      highlight: photo.querySelector<SVGPathElement>(`[data-subject-highlight="${trigger.dataset.subject}"]`)!,
-      ripple: photo.querySelector<SVGAnimationElement>(`[data-subject-ripple="${trigger.dataset.subject}"]`)!,
-      motion: [],
-      transition: 0,
-      anchor: { x: Number(trigger.dataset.anchorX), y: Number(trigger.dataset.anchorY) },
-    }));
+    const subjects: Subject[] = [...photo.querySelectorAll<SVGPathElement>('[data-subject-trigger]')].map((trigger) => {
+      const popup = photo.querySelector<HTMLElement>(`#${trigger.getAttribute('aria-controls')}`)!;
+      return {
+        trigger,
+        popup,
+        content: popup.querySelector<HTMLElement>('.subject-content')!,
+        skin: popup.querySelector<SVGPathElement>('[data-liquid-skin]')!,
+        highlight: photo.querySelector<SVGPathElement>(`[data-subject-highlight="${trigger.dataset.subject}"]`)!,
+        ripple: photo.querySelector<SVGAnimationElement>(`[data-subject-ripple="${trigger.dataset.subject}"]`)!,
+        motion: [],
+        transition: 0,
+        anchor: { x: Number(trigger.dataset.anchorX), y: Number(trigger.dataset.anchorY) },
+      };
+    });
 
     let active: Subject | null = null;
     let interaction: Interaction = 'keyboard';
@@ -207,6 +210,12 @@ import segments from '../data/photo-segments.json';
       const rest = liquidContour(0, 0, box.width, box.height, 12, anchor);
       subject.skin.setAttribute('d', rest);
       return { w: box.width, h: box.height, anchor, source, rest };
+    };
+
+    const cancelSubjectMotion = (subject: Subject) => {
+      subject.transition++;
+      subject.motion.forEach(animation => animation.cancel());
+      subject.motion = [];
     };
 
     const animatePopup = async (subject: Subject, opening: boolean) => {
@@ -273,9 +282,7 @@ import segments from '../data/photo-segments.json';
       previous.popup.inert = true;
       if (previous.popup.matches(':popover-open')) {
         if (immediate) {
-          previous.transition++;
-          previous.motion.forEach(animation => animation.cancel());
-          previous.motion = [];
+          cancelSubjectMotion(previous);
           previous.popup.removeAttribute('data-liquid-moving');
           previous.popup.hidePopover();
         } else {
@@ -334,9 +341,7 @@ import segments from '../data/photo-segments.json';
         close(false, true);
         for (const other of subjects) {
           if (other === subject || !other.popup.matches(':popover-open')) continue;
-          other.transition++;
-          other.motion.forEach(animation => animation.cancel());
-          other.motion = [];
+          cancelSubjectMotion(other);
           other.popup.removeAttribute('data-liquid-moving');
           suppressFocus = true;
           other.popup.hidePopover();
@@ -365,8 +370,9 @@ import segments from '../data/photo-segments.json';
       }, 140);
     };
 
+    const cross = (p: Point, q: Point, r: Point) => (p.x - r.x) * (q.y - r.y) - (q.x - r.x) * (p.y - r.y);
+
     const inTriangle = (point: Point, a: Point, b: Point, c: Point) => {
-      const cross = (p: Point, q: Point, r: Point) => (p.x - r.x) * (q.y - r.y) - (q.x - r.x) * (p.y - r.y);
       const first = cross(point, a, b);
       const second = cross(point, b, c);
       const third = cross(point, c, a);
@@ -393,7 +399,7 @@ import segments from '../data/photo-segments.json';
         if (!suppressFocus && lastInput === 'keyboard') open(subject, 'keyboard');
       }, { signal });
       trigger.addEventListener('click', () => {
-        open(subject, lastInput === 'touch' ? 'touch' : lastInput);
+        open(subject, lastInput);
       }, { signal });
       trigger.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -454,7 +460,6 @@ import segments from '../data/photo-segments.json';
     }, { capture: true, signal });
     document.addEventListener('pointermove', (event) => {
       if (!active || !pointerExit || interaction !== 'pointer') return;
-      // Keep the card open while the pointer crosses the gap toward it, not the surrounding photo.
       const card = active.popup.getBoundingClientRect();
       const corners = [
         { x: card.left - 6, y: card.top - 6 },
@@ -478,9 +483,7 @@ import segments from '../data/photo-segments.json';
     motionPreference.addEventListener('change', () => {
       if (!motionPreference.matches) return;
       subjects.forEach(subject => {
-        subject.transition++;
-        subject.motion.forEach(animation => animation.cancel());
-        subject.motion = [];
+        cancelSubjectMotion(subject);
         subject.ripple.endElement();
         subject.popup.removeAttribute('data-liquid-moving');
         if (subject === active) popupGeometry(subject);
