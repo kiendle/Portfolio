@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-05T05:05:10.096Z",
+  "updatedAt": "2026-11-06T05:05:09.510Z",
   "timeZone": "America/New_York",
   "days": [
     {
@@ -684,27 +684,27 @@
     },
     {
       "date": "2026-10-26",
-      "inputTokens": 2457776,
-      "outputTokens": 371729,
+      "inputTokens": 2424912,
+      "outputTokens": 368404,
       "cacheCreationTokens": 135765,
-      "cacheReadTokens": 73231847,
-      "totalTokens": 76197117
+      "cacheReadTokens": 72789863,
+      "totalTokens": 75718944
     },
     {
       "date": "2026-10-27",
-      "inputTokens": 31705131,
-      "outputTokens": 6073735,
+      "inputTokens": 31165636,
+      "outputTokens": 5971269,
       "cacheCreationTokens": 1124685,
-      "cacheReadTokens": 883601457,
-      "totalTokens": 922505008
+      "cacheReadTokens": 829667889,
+      "totalTokens": 867929479
     },
     {
       "date": "2026-10-28",
-      "inputTokens": 34325533,
-      "outputTokens": 5893740,
+      "inputTokens": 34249545,
+      "outputTokens": 5892259,
       "cacheCreationTokens": 0,
-      "cacheReadTokens": 909972854,
-      "totalTokens": 950192127
+      "cacheReadTokens": 909689974,
+      "totalTokens": 949831778
     },
     {
       "date": "2026-10-29",
@@ -761,6 +761,14 @@
       "cacheCreationTokens": 0,
       "cacheReadTokens": 641866240,
       "totalTokens": 667293754
+    },
+    {
+      "date": "2026-11-05",
+      "inputTokens": 11521833,
+      "outputTokens": 2085179,
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 330728448,
+      "totalTokens": 344335460
     }
   ]
 }
