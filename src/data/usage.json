@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-26T05:05:06.467Z",
+  "updatedAt": "2026-11-27T05:15:34.478Z",
   "timeZone": "America/New_York",
   "days": [
     {
@@ -905,6 +905,14 @@
       "cacheCreationTokens": 5564301,
       "cacheReadTokens": 233444704,
       "totalTokens": 242068145
+    },
+    {
+      "date": "2026-11-26",
+      "inputTokens": 809952,
+      "outputTokens": 463172,
+      "cacheCreationTokens": 1432641,
+      "cacheReadTokens": 24340187,
+      "totalTokens": 27045952
     }
   ]
 }
